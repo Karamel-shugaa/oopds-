@@ -5,28 +5,16 @@
 Ship::Ship(const std::string &name, char symbol, int x, int y, int lives, const std::string &team)
     : name(name), symbol(symbol), x(x), y(y), lives(lives), team(team) {}
 
+// getters for ship class
 char Ship::getSymbol() const { return symbol; }
 int Ship::getX() const { return x; }
 int Ship::getY() const { return y; }
 int Ship::getLives() const { return lives; }
-int Ship::getKills() const { return kills; }
+int Ship::getKills() const { return kills; } 
 bool Ship::getDeathFlag() const { return deathflag; }
 std::string Ship::getTeam() const { return team; }
 
-void Ship::takeDamage() {
-    if (lives > 0) lives--;
-    if (lives <= 0) death();
-}
-
-void Ship::setPosition(int newX, int newY) {
-    x = newX;
-    y = newY;
-}
-
-void Ship::recordKills() {
-    kills++;
-}
-
+//deathflag of a ship (if true ship is dead and cant return to qeue)
 void Ship::death() {
     if (!deathflag) {
         std::cout << name << " has been destroyed!\n";
@@ -34,10 +22,29 @@ void Ship::death() {
     }
 }
 
-// BattleShip
+// ship live management, if lives <= 0 calls death 
+void Ship::takeDamage() {
+    if (lives > 0) lives--;
+    if (lives <= 0) death();
+}
+
+// updates ship position after an action
+void Ship::setPosition(int newX, int newY) {
+    x = newX;
+    y = newY;
+}
+//kill counter to manage ship upgrades
+void Ship::recordKills() {
+    kills++;
+}
+
+
+
+// BattleShip 
 BattleShip::BattleShip(const std::string &name, char symbol, int x, int y, int lives, const std::string &team)
     : Ship(name, symbol, x, y, lives, team) {}
 
+//sequence of actions a battleship takes each turn
 void BattleShip::turn() {
     std::cout << "BattleShip started its turn!\n";
     look();
@@ -46,6 +53,8 @@ void BattleShip::turn() {
     shoot();
 }
 
+//randomize movement
+//(for team) tba avoiding to move to an allies coardonates
 void BattleShip::move() {
     int direction = rand() % 4;
     switch (direction) {
@@ -57,10 +66,14 @@ void BattleShip::move() {
     std::cout << "BattleShip " << name << " moved to (" << x << ", " << y << ").\n";
 }
 
+//scans the location of ally ships to avoid hitting them
+//(for team) tba function to store ally ship coardonates
 void BattleShip::look() {
     std::cout << "BattleShip " << name << " is scanning its surroundings.\n";
 }
 
+//controls the ship shooting range and disallows it to shoot its target
+//(for team) tba if statment to avoid shooting ally ship coardonates 
 void BattleShip::shoot() {
     std::cout << "BattleShip " << name << " fires randomly.\n";
 }
@@ -69,37 +82,49 @@ void BattleShip::shoot() {
 Cruiser::Cruiser(const std::string &name, char symbol, int x, int y, int lives, const std::string &team)
     : Ship(name, symbol, x, y, lives, team) {}
 
+
+//sequence of actions a cruiser takes each turn
 void Cruiser::turn() {
     look();
     move();
     ram();
 }
 
+//checks if any ally or any ship are in its movement range
+//(for team) tba stores coardonates for enemy and ally ship in movement range
 void Cruiser::look() {
     std::cout << "Cruiser " << name << " scans the area.\n";
 }
 
+//controls movement and is responsible for not moving on ally ships
+//(for team) tba avoiding to move to an allies coardonates
 void Cruiser::move() {
     std::cout << "Cruiser " << name << " moves cautiously.\n";
 }
 
+//forces a cruiser to ram an enemy if it is in range
+//(for team) tba a function that does that
 void Cruiser::ram() {
     std::cout << "Cruiser " << name << " rams an enemy ship!\n";
 }
 
-
+// Frigate
 Frigate::Frigate(const std::string &name, char symbol, int x, int y, int lives, const std::string &team)
     : Ship(name, symbol, x, y, lives, team), targetx(0), targety(0) {}
 
+//sequence of actions a Frigate takes each turn
 void Frigate::turn() {
     std::cout << "Frigate " << name << " started its turn!\n";
     shoot();
 }
 
+//shoots methadolically in a clockwise direction
+//(for team) tba function that implements that
 void Frigate::shoot() {
     std::cout << "Frigate " << name << " fires at (" << targetx << ", " << targety << ")!\n";
 }
 
+//getters for current target coardonates 
 int Frigate::getTargetX() const {
     return targetx;
 }
@@ -108,14 +133,18 @@ int Frigate::getTargetY() const {
     return targety;
 }
 
+//calculates the next target coardonates
+//(for team) tba making this  function make sense
 void Frigate::nextTarget() {
     targetx++;
     targety++;
 }
 
+//Destroyer 
 Destroyer::Destroyer(const std::string &name, char symbol, int x, int y, int lives, const std::string &team)
     : Ship(name, symbol, x, y, lives, team) {}
 
+//sequence of actions a destroyer takes each turn
 void Destroyer::turn() {
     std::cout << "Destroyer " << name << " started its turn!\n";
     look();
@@ -124,10 +153,14 @@ void Destroyer::turn() {
     shoot();
 }
 
+//controls movement
+//(for team) tba avoiding to move to an allies coardonates
 void Destroyer::move() {
     std::cout << "Destroyer " << name << " cautiously moves to a new position.\n";
 }
 
+//looks and stores location of all ally ships, stores location of enemy ship in area
+//(for team) nah i would win (if youre reading this i am done for the day it is 12:14 i will continue the comments later)
 void Destroyer::look() {
     std::cout << "Destroyer " << name << " scans the surroundings.\n";
 }
