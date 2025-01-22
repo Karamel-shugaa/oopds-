@@ -1,5 +1,7 @@
 #include "Ship.h"
+#include <cstdlib> // for rand()
 
+// Ship base class
 Ship::Ship(const std::string &name, char symbol, int x, int y, int lives, const std::string &team)
     : name(name), symbol(symbol), x(x), y(y), lives(lives), team(team) {}
 
@@ -7,238 +9,211 @@ char Ship::getSymbol() const { return symbol; }
 int Ship::getX() const { return x; }
 int Ship::getY() const { return y; }
 int Ship::getLives() const { return lives; }
-int Ship::getkills() const { return kills; }
-bool Ship::getdeathflag() const { return deathflag; }
+int Ship::getKills() const { return kills; }
+bool Ship::getDeathFlag() const { return deathflag; }
 std::string Ship::getTeam() const { return team; }
 
-void Ship::takeDamage()
-{
-    lives--;
+void Ship::takeDamage() {
+    if (lives > 0) lives--;
+    if (lives <= 0) death();
 }
 
-void Ship::setPosition(int newX, int newY)
-{
+void Ship::setPosition(int newX, int newY) {
     x = newX;
     y = newY;
 }
-void Ship::recordkills()
-{
+
+void Ship::recordKills() {
     kills++;
 }
-void Ship::death()
-{
-    if (lives <= 0)
-    {
+
+void Ship::death() {
+    if (!deathflag) {
         std::cout << name << " has been destroyed!\n";
         deathflag = true;
     }
 }
 
+// BattleShip
 BattleShip::BattleShip(const std::string &name, char symbol, int x, int y, int lives, const std::string &team)
     : Ship(name, symbol, x, y, lives, team) {}
 
-void BattleShip::turn()
-{
-    std::cout << "BattleShip started its turn!!" << std::endl;
+void BattleShip::turn() {
+    std::cout << "BattleShip started its turn!\n";
     look();
     move();
     shoot();
     shoot();
 }
-void BattleShip::look()
-{
-    std::cout << "Battleship " << name << " is scanning its surrouding.\n";
-}
 
-void BattleShip::move()
-{
+void BattleShip::move() {
     int direction = rand() % 4;
-    switch (direction)
-    {
-    case 0:
-        x++;
-        break; // Move right
-    case 1:
-        x--;
-        break; // Move left
-    case 2:
-        y++;
-        break; // Move down
-    case 3:
-        y--;
-        break; // Move up
+    switch (direction) {
+        case 0: x++; break;
+        case 1: x--; break;
+        case 2: y++; break;
+        case 3: y--; break;
     }
-    std::cout << "Battleship " << name << " moved to (" << x << ", " << y << ").\n";
+    std::cout << "BattleShip " << name << " moved to (" << x << ", " << y << ").\n";
 }
 
-void BattleShip::shoot()
-{
-    // if statment, first one if it shoots randomly, second one if it hits a target
-    std::cout << "Battleship " << name << "fires randomly\n";
-    std::cout << "Battleship " << name << " fires at enemy positions!\n";
+void BattleShip::look() {
+    std::cout << "BattleShip " << name << " is scanning its surroundings.\n";
 }
 
+void BattleShip::shoot() {
+    std::cout << "BattleShip " << name << " fires randomly.\n";
+}
+
+// Cruiser
 Cruiser::Cruiser(const std::string &name, char symbol, int x, int y, int lives, const std::string &team)
     : Ship(name, symbol, x, y, lives, team) {}
 
-void Cruiser::turn()
-{
-    std::cout << "Cruiser started its turn!!" << std::endl;
+void Cruiser::turn() {
     look();
     move();
     ram();
 }
 
-void Cruiser::look()
-{
-    std::cout << "Cruiser " << name << " scans the nearby area.\n";
+void Cruiser::look() {
+    std::cout << "Cruiser " << name << " scans the area.\n";
 }
 
-void Cruiser::move()
-{
-    // if statment if it scans an enemy ship = false
+void Cruiser::move() {
     std::cout << "Cruiser " << name << " moves cautiously.\n";
 }
 
-void Cruiser::ram()
-{
-    // if statment if scans enemy ship = true
-    std::cout << "Cruiser " << name << "Rams and destroies an enemy ship!!\n";
+void Cruiser::ram() {
+    std::cout << "Cruiser " << name << " rams an enemy ship!\n";
 }
 
-void Destroyer::turn()
-{
 
-    std::cout << "Destroyer started its turn!!" << std::endl;
-    look();
-    move();
-    ram();
-    shoot();
+Frigate::Frigate(const std::string &name, char symbol, int x, int y, int lives, const std::string &team)
+    : Ship(name, symbol, x, y, lives, team), targetx(0), targety(0) {}
+
+void Frigate::turn() {
+    std::cout << "Frigate " << name << " started its turn!\n";
     shoot();
 }
-void Destroyer::look()
-{
-    std::cout << "Destroyer " << name << " scans the nearby area.\n";
-}
-void Destroyer::move()
-{
-    // if statment if it scans enemy ship = false
-    std::cout << "Destroyer " << name << " moves cautiously.\n";
+
+void Frigate::shoot() {
+    std::cout << "Frigate " << name << " fires at (" << targetx << ", " << targety << ")!\n";
 }
 
-void Destroyer::ram()
-{
-    // if statment if scans enemy ship = true
-    std::cout << "Destroyer " << name << "Rams and destroies an enemy ship!!\n";
-}
-
-void Destroyer::shoot()
-{
-    // if statment, first one if it shoots randomly, second one if it hits a target
-    std::cout << "Destroyer " << name << " Fires!!\n";
-    std::cout << "Destroyer " << name << " Hits an enemy!!\n";
-}
-void Frigate::turn()
-{
-    std::cout << "Frigate " << name << " started its turn!!\n";
-    shoot();
-}
-void Frigate::shoot()
-{
-    std::cout << "Frigate " << name << " Fires!!\n";
-}
-int Frigate::gettargetx() const
-{
+int Frigate::getTargetX() const {
     return targetx;
 }
-int Frigate::gettargety() const
-{
+
+int Frigate::getTargetY() const {
     return targety;
 }
-int Frigate::nexttarget()
-{
+
+void Frigate::nextTarget() {
     targetx++;
     targety++;
 }
-void Corvette::turn()
-{
-    std::cout << "Corvette " << name << " started its turn!!\n"
-              << std::endl;
-    shoot();
-}
-void Corvette::shoot()
-{
-    std::cout << "Corvette " << name << " has taken a shot!!\n"
-              << std::endl;
-}
-void Amphibious::turn()
-{
-    std::cout << "Amphibious " << name << " started its turn!!\n"
-              << std::endl;
-    look();
-    move();
-    shoot();
-    shoot();
-}
-void Amphibious::move()
-{
-    std::cout << "Amphibious " << name << " has moved!!\n"
-              << std::endl;
-}
-void Amphibious::shoot()
-{
-    // if statment, first one if it shoots randomly, second one if it hits a target
-    std::cout << "Amphibious " << name << " shoots!!\n"
-              << std::endl;
-    std::cout << "Amphibious " << name << " hits an enemy!!\n";
-}
-void SuperShip::turn()
-{
 
-    std::cout << "SuperShip " << name << " started its turn!!\n"
-              << std::endl;
+Destroyer::Destroyer(const std::string &name, char symbol, int x, int y, int lives, const std::string &team)
+    : Ship(name, symbol, x, y, lives, team) {}
+
+void Destroyer::turn() {
+    std::cout << "Destroyer " << name << " started its turn!\n";
     look();
     move();
     ram();
     shoot();
-    shoot();
-    shoot();
 }
-void SuperShip::look()
-{
-    std::cout << "SuperShip " << name << " is scanning its surroundings\n";
-}
-void SuperShip::move()
-{
-    // if statment if it scans enemy ship = false
 
-    std::cout << "SuperShip " << name << " has moved!!\n"
-              << std::endl;
+void Destroyer::move() {
+    std::cout << "Destroyer " << name << " cautiously moves to a new position.\n";
 }
-void SuperShip::ram()
-{
-    // if statment if it scans enemy ship = true
-    std::cout << "SuperShip " << name << " rams another ship!!\n";
-}
-void SuperShip::shoot()
-{
-    // if statment, first one if it shoots randomly, second one if it hits a target
-    std::cout << "SuperShip " << name << " shoots!!\n";
-    std::cout << "SuperShip " << name << " shoots!!\n";
-}
-void Terrorist::turn()
-{
 
-    std::cout << "Terrorist " << name << "started its turn!!" << std::endl;
+void Destroyer::look() {
+    std::cout << "Destroyer " << name << " scans the surroundings.\n";
+}
+
+void Destroyer::ram() {
+    std::cout << "Destroyer " << name << " rams an enemy ship!\n";
+}
+
+void Destroyer::shoot() {
+    std::cout << "Destroyer " << name << " fires and hits a target!\n";
+}
+
+Corvette::Corvette(const std::string &name, char symbol, int x, int y, int lives, const std::string &team)
+    : Ship(name, symbol, x, y, lives, team) {}
+
+void Corvette::turn() {
+    std::cout << "Corvette " << name << " started its turn!\n";
+    shoot();
+}
+
+void Corvette::shoot() {
+    std::cout << "Corvette " << name << " fires a precise shot!\n";
+}
+
+Amphibious::Amphibious(const std::string &name, char symbol, int x, int y, int lives, const std::string &team)
+    : Ship(name, symbol, x, y, lives, team) {}
+
+void Amphibious::turn() {
+    std::cout << "Amphibious " << name << " started its turn!\n";
+    look();
+    move();
+    shoot();
+}
+
+void Amphibious::move() {
+    std::cout << "Amphibious " << name << " moves to a strategic position.\n";
+}
+
+void Amphibious::look() {
+    std::cout << "Amphibious " << name << " scans for opportunities.\n";
+}
+
+void Amphibious::shoot() {
+    std::cout << "Amphibious " << name << " fires at an enemy and hits!\n";
+}
+
+SuperShip::SuperShip(const std::string &name, char symbol, int x, int y, int lives, const std::string &team)
+    : Ship(name, symbol, x, y, lives, team) {}
+
+void SuperShip::turn() {
+    std::cout << "SuperShip " << name << " started its turn!\n";
+    look();
+    move();
+    ram();
+    shoot();
+}
+
+void SuperShip::move() {
+    std::cout << "SuperShip " << name << " makes a bold move across the field.\n";
+}
+
+void SuperShip::look() {
+    std::cout << "SuperShip " << name << " scans its surroundings.\n";
+}
+
+void SuperShip::ram() {
+    std::cout << "SuperShip " << name << " rams an enemy ship powerfully!\n";
+}
+
+void SuperShip::shoot() {
+    std::cout << "SuperShip " << name << " fires multiple shots with high accuracy!\n";
+}
+
+Terrorist::Terrorist(const std::string &name, char symbol, int x, int y, int lives, const std::string &team)
+    : Ship(name, symbol, x, y, lives, team) {}
+
+void Terrorist::turn() {
+    std::cout << "Terrorist " << name << " started its turn!\n";
     move();
     mine();
 }
-void Terrorist::move()
-{
-    std::cout << "Terrorist has moved to a random position!!" << std::endl;
-}
-void Terrorist::mine()
-{
 
-    std::cout << "Terrorist has placed a mine!!" << std::endl;
+void Terrorist::move() {
+    std::cout << "Terrorist " << name << " moves to a random position.\n";
+}
+
+void Terrorist::mine() {
+    std::cout << "Terrorist " << name << " places a mine on the battlefield.\n";
 }
