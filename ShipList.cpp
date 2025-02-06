@@ -3,31 +3,23 @@
 
 ShipList::ShipList() : head(nullptr) {}
 
-ShipList::~ShipList()
+// Must use move semantics to transfer ownership of ship
+void ShipList::append(std::unique_ptr<Ship> ship)
 {
-    Node *current = head;
-    while (current != nullptr)
-    {
-        Node *next = current->next;
-        delete current;
-        current = next;
-    }
-}
-
-void ShipList::append(Ship *ship)
-{
-    Node *newNode = new Node(ship);
+    // make_unique same as new 
+    auto newNode = std::make_unique<Node>(std::move(ship));
     if (head == nullptr)
     {
-        head = newNode;
+        head = std::move(newNode);
         return;
     }
-    Node *current = head;
+    Node *current = head.get();
     while (current->next != nullptr)
     {
-        current = current->next;
+        current = current->next.get();
     }
-    current->next = newNode;
+    // move ownership
+    current->next = std::move(newNode);
 }
 
 void ShipList::remove(Ship *ship)
@@ -35,39 +27,34 @@ void ShipList::remove(Ship *ship)
     if (head == nullptr)
         return;
 
-    Node *current = head;
-    Node *prev = nullptr;
-
     // If head node itself is to be deleted
-    if (head->ship == ship)
+    if (head->ship.get() == ship)
     {
-        head = head->next;
-        delete current;
+        head = std::move(head->next);
         return;
     }
-
+    Node *current = head.get();
+    Node *prev = nullptr;
     // Traverse the list to find the node to delete
-    while (current && current->ship != ship)
+    while (current != nullptr && current->ship.get() != ship)
     {
         prev = current;
-        current = current->next;
+        current = current->next.get();
     }
-
-    // If ship is not found
     if (current == nullptr)
         return;
-
-    // Unlink the node from the linked list
-    prev->next = current->next;
-    delete current;
+    if (prev != nullptr) // ship found
+    {
+        prev->next = std::move(current->next);
+    }
 }
 
 void ShipList::display()
 {
-    Node *current = head;
+    Node *current = head.get();
     while (current)
     {
         current->ship->displayDetails();
-        current = current->next;
+        current = current->next.get();
     }
 }

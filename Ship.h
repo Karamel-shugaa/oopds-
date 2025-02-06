@@ -10,21 +10,28 @@ class Simulation;
 class Ship
 {
 protected:
-    char symbol;
-    int x, y;
+    struct Cell
+    {
+        char symbol;
+        int x, y;
+    };
+    Cell cell;
     int lives;
+    int kills;
     char team;
+    std::string name;
+    Cell neighbouring[8]{};
     Simulation &simulation;
 
 public:
-    Ship(Simulation &simulation) : simulation(simulation) {};
+    Ship(Simulation &simulation) : simulation(simulation), lives(3), kills(0) {};
     virtual ~Ship() {}
     // use Ship(x, y) to set position
     void operator()(int x, int y) { setPosition(x, y); }
     virtual void action() = 0;
-    void setName(const std::string &newName);
     void setSymbol(char newSymbol);
     void setTeam(char newTeam);
+    void setName(std::string);
     char getSymbol() const;
     int getX() const;
     int getY() const;
@@ -32,7 +39,8 @@ public:
     char getTeam() const;
     void displayDetails(); // for debugging
     void setPosition(int newX, int newY);
-    void takeDamage();
+    void recordKill();
+    void die();
 };
 
 // Intermediate abstract classes
@@ -48,7 +56,7 @@ class SeeingShip : virtual public Ship
 {
 public:
     SeeingShip(Simulation &simulation) : Ship(simulation) {}
-    virtual void look() = 0;
+    void look();
     virtual ~SeeingShip() {}
 };
 
@@ -86,7 +94,6 @@ public:
     BattleShip(Simulation &simulation) : Ship(simulation), MovingShip(simulation), SeeingShip(simulation), ShootingShip(simulation) {};
     void action() override;
     void move() override;
-    void look() override;
     void shoot() override;
 };
 
@@ -96,7 +103,6 @@ public:
     Cruiser(Simulation &simulation) : Ship(simulation), MovingShip(simulation), SeeingShip(simulation), RamingShip(simulation) {};
     void action() override;
     void move() override;
-    void look() override;
     // void ram() override;
 };
 
@@ -123,7 +129,6 @@ public:
     Destroyer(Simulation &simulation) : Ship(simulation), MovingShip(simulation), SeeingShip(simulation), ShootingShip(simulation), RamingShip(simulation) {};
     void action() override;
     void move() override;
-    void look() override;
     // void ram() override;
     void shoot() override;
 };
@@ -142,7 +147,6 @@ public:
     Amphibious(Simulation &simulation) : Ship(simulation), MovingShip(simulation), SeeingShip(simulation), ShootingShip(simulation) {};
     void action() override;
     void move() override;
-    void look() override;
     void shoot() override;
 };
 
@@ -152,7 +156,6 @@ public:
     SuperShip(Simulation &simulation) : Ship(simulation), MovingShip(simulation), SeeingShip(simulation), ShootingShip(simulation), RamingShip(simulation) {};
     void action() override;
     void move() override;
-    void look() override;
     // void ram() override;
     void shoot() override;
 };
@@ -166,4 +169,5 @@ public:
 //     void mine() override;
 // };
 
-#endif // SHIP_H
+#endif 
+// SHIP_H

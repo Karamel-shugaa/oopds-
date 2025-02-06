@@ -8,166 +8,169 @@
 #include <cmath>
 
 // ------------- Ship Base Class -------------
-char Ship::getSymbol() const { return symbol; }
-int Ship::getX() const { return x; }
-int Ship::getY() const { return y; }
+
+char Ship::getSymbol() const { return cell.symbol; }
+int Ship::getX() const { return cell.x; }
+int Ship::getY() const { return cell.y; }
 int Ship::getLives() const { return lives; }
+char Ship::getTeam() const { return team; }
 void Ship::setSymbol(char newSymbol)
 {
-    symbol = newSymbol;
+    cell.symbol = newSymbol;
 }
 void Ship::setTeam(char newTeam)
 {
     team = newTeam;
 }
 
+void Ship::setName(std::string newName)
+{
+    name = newName;
+}
+
 void SeeingShip::look()
 {
-    std::cout << "SeeingShip " << team << " at (" << x << ", " << y << ") is scanning its surroundings.\n";
-    for (int dy = -1; dy <= 1; dy++)
+    // Implement a 3×3 scan around (x, y)
+    std::cout << name << ' ' << team << cell.symbol << " at (" << cell.x << ", " << cell.y << ") is scanning its surroundings.\n";
+    int index = 0;
+    for (int y = -1; y <= 1; y++)
     {
-        for (int dx = -1; dx <= 1; dx++)
+        for (int x = -1; x <= 1; x++)
         {
-            int nx = x + dx;
-            int ny = y + dy;
+            int nx = cell.x + x;
+            int ny = cell.y + y;
+            if (ny == cell.y && nx == cell.x)
+                continue;
             if (simulation.inBounds(nx, ny))
             {
-                std::cout << "Found " << simulation.get_cell(nx, ny) << " at (" << nx << ", " << ny << ".)\n";
+                neighbouring[index] = {simulation.getCell(nx, ny), nx, ny};
+                std::cout << "[ " << simulation.getCell(nx, ny) << " at (" << nx << ", " << ny << ") ] ";
             }
+            else
+            {
+                neighbouring[index] = {'X', nx, ny};
+                std::cout << "[ X" << " at (" << nx << ", " << ny << ") ] ";
+            }
+            index++;
         }
     }
+    std::cout << std::endl;
 }
 // void Ship::setLives(int life) { lives = life; }
 // int Ship::getKills() const { return kills; }
 // bool Ship::getDeathFlag() const { return deathflag; }
 // std::string Ship::getTeam() const { return team; }
 
-// void Ship::takeDamage()
-// {
-//     if (lives > 0)
-//         lives--;
-//     if (lives <= 0)
-//         death();
-// }
+void Ship::die()
+{
+    simulation.setCell(cell.x, cell.y, '0');
+    lives--;
+    if (lives == 0)
+    {
+        std::cout << name << ' ' << team << cell.symbol << " at (" << cell.x << ", " << cell.y << ") has fallen!\n";
+    }
+    else
+    {
+        std::cout << name << ' ' << team << cell.symbol << " at (" << cell.x << ", " << cell.y << ") has " << lives << " lives left.\n";
+    }
+    simulation.removeShip(this);
+}
 
 void Ship::setPosition(int newX, int newY)
 {
-    x = newX;
-    y = newY;
+    cell.x = newX;
+    cell.y = newY;
 }
 
 void Ship::displayDetails()
 {
-    std::cout << "Team: " << team << ", Symbol: " << symbol << ", Position: (" << x << ", " << y << "), Lives: " << lives << std::endl;
+    std::cout << "Team: " << team << ", Symbol: " << cell.symbol << ", Position: (" << cell.x << ", " << cell.y << "), Lives: " << lives << std::endl;
 }
-// void Ship::recordKills()
-// {
-//     kills++;
-// }
-
-// void Ship::death()
-// {
-//     if (!deathflag)
-//     {
-//         std::cout << name << " has been destroyed!\n";
-//         deathflag = true;
-//     }
-// }
+void Ship::recordKill()
+{
+    kills++;
+}
 
 void BattleShip::action()
 {
-    std::cout << "BattleShip " << team << symbol << " at (" << x << ", " << y << ") started its turn.\n";
+    std::cout << name << ' ' << team << cell.symbol << " at (" << cell.x << ", " << cell.y << ") started its turn.\n";
     look();
+    move();
+    simulation.display();
+    shoot();
+    shoot();
+    // if (kills == 4)
+    // {
+    //     std::cout << name << team << cell.symbol << " has reached 4 kills => upgrading to Cruiser.\n";
+    //     simulation.upgradeShip(this, "Cruiser");
+    // }
 }
 
-// Cannot move onto occupant cell unless upgraded to Destroyer
-
-void BattleShip::look()
+void BattleShip::move()
 {
-    // Implement a 3×3 scan around (x, y)
-    char symbols[8];
-    std::cout << "BattleShip " << team << symbol << " at (" << x << ", " << y << ") is scanning its surroundings.\n";
-    for (int dy = -1; dy <= 1; dy++)
+    int index = rand() % 8;
+    bool free = false;
+    for (int i = 0; i < 8; i++)
     {
-        for (int dx = -1; dx <= 1; dx++)
+        if (neighbouring[i].symbol == '0')
         {
-            int nx = x + dx;
-            int ny = y + dy;
-            if (ny == y && nx == x)
-                continue;
-            if (simulation.inBounds(nx, ny))
+            while (neighbouring[index].symbol != '0')
             {
-                std::cout << "[ " << simulation.get_cell(nx, ny) << " at (" << nx << ", " << ny << ") ] ";
+                index = rand() % 8;
             }
+            free = true;
+            break;
         }
     }
-    std::cout << std::endl;
+    if (!free)
+    {
+        std::cout << name << ' ' << team << cell.symbol << " at (" << cell.x << ", " << cell.y << ") cannot move.\n";
+        return;
+    }
+    std::cout << name << ' ' << team << cell.symbol << " at (" << cell.x << ", " << cell.y << ") is moving to (" << neighbouring[index].x << ", " << neighbouring[index].y << ").\n";
+    simulation.setCell(cell.x, cell.y, '0');
+    setPosition(neighbouring[index].x, neighbouring[index].y);
+    simulation.setCell(cell.x, cell.y, cell.symbol);
+    std::cout << name << ' ' << team << cell.symbol << " moved to (" << cell.x << ", " << cell.y << ").\n";
 }
 
-void BattleShip::move() {}
-// {
-//     // Check if we are upgraded (≥4 kills => effectively a Destroyer)
-//     // bool canMoveOntoOccupied = (kills >= 4);
+void BattleShip::shoot()
+{
+    int dx, dy;
+    do
+    {
+        dx = (rand() % 11) - 5; // num between -5 and 5
+        dy = (rand() % 11) - 5;
+    } while (abs(dx) + abs(dy) > 5 || (dx == 0 && dy == 0)); // avoid self targeting and limit to city block distance of 5
+    int target_x = cell.x + dx;
+    int target_y = cell.y + dy;
 
-//     // Check 4 neighbors up/down/left/right
-
-//     // Validate new position
-//     if (!simulation.canMoveTo(x, y, canMoveOntoOccupied))
-//     {
-//         // revert
-//         x = oldX;
-//         y = oldY;
-//         std::cout << "BattleShip " << name << " couldn't move; invalid or occupied.\n";
-//     }
-//     else
-//     {
-//         // If occupant is enemy and canMoveOntoOccupied, ram/destroy them
-//         if (canMoveOntoOccupied)
-//         {
-//             Ship *occupant = simulation.getOccupantAt(x, y);
-//             if (occupant && occupant->getTeam() != team)
-//             {
-//                 std::cout << "BattleShip " << name << " (upgraded to Destroyer) rams " << occupant->getTeam()
-//                           << " " << occupant->getSymbol() << "!\n";
-//                 // Kill occupant
-//                 occupant->takeDamage();
-//                 while (occupant->getLives() > 0)
-//                     occupant->takeDamage();
-//                 recordKills();
-//             }
-//         }
-//         std::cout << "BattleShip " << name << " moved to (" << x << ", " << y << ").\n";
-//         simulation.updateBattlefieldPosition(this, oldX, oldY);
-//     }
-// }
-
-void BattleShip::shoot() {}
-// {
-//     int dx = rand() % 5 - 2;
-//     int dy = rand() % 5 - 2;
-//     // city block distance <= 5 check
-//     if (std::abs(dx) + std::abs(dy) > 5)
-//         return;
-
-//     int targetX = x + dx;
-//     int targetY = y + dy;
-
-//     if (!simulation.inBounds(targetX, targetY))
-//         return;
-
-//     Ship *occupant = simulation.getOccupantAt(targetX, targetY);
-//     if (occupant && occupant->getTeam() != team)
-//     {
-//         occupant->takeDamage();
-//         recordKills();
-
-//         // If we just reached 4 kills => we can ram occupant cells
-//         if (kills == 4)
-//         {
-//             std::cout << name << " has been upgraded to a Destroyer (can ram)!\n";
-//         }
-//     }
-// }
+    if (!simulation.inBounds(target_x, target_y))
+    {
+        std::cout << name << ' ' << team << cell.symbol << " at (" << cell.x << ", " << cell.y << ") shot at (" << target_x << ", " << target_y << ") and missed (out of bounds).\n";
+        return;
+    }
+    std::cout << "Symbol at target: " << simulation.getCell(target_x, target_y) << std::endl;
+    Ship *target = simulation.getShipAt(target_x, target_y);
+    if (target != nullptr)
+    {
+        if (target->getTeam() != team)
+        {
+            std::cout << name << ' ' << team << cell.symbol << " at (" << cell.x << ", " << cell.y << ") shot at (" << target_x << ", " << target_y << ") and hit " << target->getTeam() << ' ' << target->getSymbol() << "!\n";
+            target->die();
+            recordKill();
+        }
+        // to be removed
+        else
+        {
+            std::cout << name << ' ' << team << cell.symbol << " at (" << cell.x << ", " << cell.y << ") shot at (" << target_x << ", " << target_y << ") and missed (friendly fire).\n";
+        }
+    }
+    else
+    {
+        std::cout << name << " at (" << cell.x << ", " << cell.y << ") fires at (" << target_x << ", " << target_y << ") and misses.\n";
+    }
+}
 
 void Cruiser::action() {}
 // {
@@ -186,15 +189,15 @@ void Cruiser::action() {}
 //     }
 // }
 
-void Cruiser::look() {}
+// void Cruiser::look() {}
 // {
 //     std::cout << "Cruiser " << name << " scans the 3x3 area.\n";
-//     for (int dy = -1; dy <= 1; dy++)
+//     for (int y = -1; y <= 1; y++)f
 //     {
-//         for (int dx = -1; dx <= 1; dx++)
+//         for (int y = -1; y <= 1; y++)
 //         {
-//             int nx = x + dx;
-//             int ny = y + dy;
+//             int nx = x + y;
+//             int ny = y + y;
 //             if (simulation.inBounds(nx, ny))
 //             {
 //                 Ship *occupant = simulation.getOccupantAt(nx, ny);
@@ -216,15 +219,15 @@ void Cruiser::move() {}
 //     // Check 4 neighbors up/down/left/right
 //     struct
 //     {
-//         int dx, dy;
+//         int y, y;
 //     } directions[4] = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
 //     Ship *enemyInNeighbor = nullptr;
-//     int bestDx = 0, bestDy = 0;
+//     int besty = 0, besty = 0;
 
 //     for (auto &d : directions)
 //     {
-//         int nx = x + d.dx;
-//         int ny = y + d.dy;
+//         int nx = x + d.y;
+//         int ny = y + d.y;
 //         if (simulation.inBounds(nx, ny))
 //         {
 //             Ship *occupant = simulation.getOccupantAt(nx, ny);
@@ -232,28 +235,28 @@ void Cruiser::move() {}
 //             if (occupant && occupant->getTeam() != team)
 //             {
 //                 enemyInNeighbor = occupant;
-//                 bestDx = d.dx;
-//                 bestDy = d.dy;
+//                 besty = d.y;
+//                 besty = d.y;
 //                 break;
 //             }
 //             // else if occupant is null => a possible free cell we can move to
 //             else if (!occupant && !enemyInNeighbor)
 //             {
 //                 // keep track in case we find no enemies
-//                 bestDx = d.dx;
-//                 bestDy = d.dy;
+//                 besty = d.y;
+//                 besty = d.y;
 //             }
 //         }
 //     }
-//     int oldX = x, oldY = y;
-//     x += bestDx;
-//     y += bestDy;
+//     int oly = x, oly = y;
+//     x += besty;
+//     y += besty;
 
 //     if (!simulation.canMoveTo(x, y, /* canMoveOntoOccupied= */ (enemyInNeighbor != nullptr)))
 //     {
 //         // revert
-//         x = oldX;
-//         y = oldY;
+//         x = oly;
+//         y = oly;
 //         std::cout << "Cruiser " << name << " can't move.\n";
 //     }
 //     else
@@ -268,13 +271,13 @@ void Cruiser::move() {}
 //                 enemyInNeighbor->takeDamage();
 //             recordKills();
 //         }
-//         simulation.updateBattlefieldPosition(this, oldX, oldY);
+//         simulation.updateBattlefieldPosition(this, oly, oly);
 //     }
 // }
 
 // void Cruiser::ram()
 // {
-//     // Already performed the ramming logic in move() if occupant is found
+//     // Alreay performed the ramming logic in move() if occupant is found
 //     std::cout << "Cruiser " << name << " rams an enemy ship if present in move.\n";
 // }
 
@@ -298,12 +301,12 @@ void Frigate::shoot() {}
 //     // Directions in clockwise order: up, up-right, right, down-right, down, down-left, left, up-left
 //     static int D[8][2] = {
 //         {0, -1}, {1, -1}, {1, 0}, {1, 1}, {0, 1}, {-1, 1}, {-1, 0}, {-1, -1}};
-//     int dx = D[directionIndex][0];
-//     int dy = D[directionIndex][1];
+//     int y = D[directionIndex][0];
+//     int y = D[directionIndex][1];
 //     directionIndex = (directionIndex + 1) % 8;
 
-//     int tx = x + dx;
-//     int ty = y + dy;
+//     int tx = x + y;
+//     int ty = y + y;
 
 //     std::cout << "Frigate " << name << " fires at (" << tx << ", " << ty << ")!\n";
 //     if (simulation.inBounds(tx, ty))
@@ -355,40 +358,40 @@ void Destroyer::move() {}
 //     // Move like a Cruiser => prefer occupant if enemy
 //     struct
 //     {
-//         int dx, dy;
+//         int y, y;
 //     } directions[4] = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
 //     Ship *enemyInNeighbor = nullptr;
-//     int bestDx = 0, bestDy = 0;
+//     int besty = 0, besty = 0;
 
 //     for (auto &d : directions)
 //     {
-//         int nx = x + d.dx;
-//         int ny = y + d.dy;
+//         int nx = x + d.y;
+//         int ny = y + d.y;
 //         if (simulation.inBounds(nx, ny))
 //         {
 //             Ship *occupant = simulation.getOccupantAt(nx, ny);
 //             if (occupant && occupant->getTeam() != team)
 //             {
 //                 enemyInNeighbor = occupant;
-//                 bestDx = d.dx;
-//                 bestDy = d.dy;
+//                 besty = d.y;
+//                 besty = d.y;
 //                 break;
 //             }
 //             else if (!occupant && !enemyInNeighbor)
 //             {
-//                 bestDx = d.dx;
-//                 bestDy = d.dy;
+//                 besty = d.y;
+//                 besty = d.y;
 //             }
 //         }
 //     }
 
-//     int oldX = x, oldY = y;
-//     x += bestDx;
-//     y += bestDy;
+//     int oly = x, oly = y;
+//     x += besty;
+//     y += besty;
 //     if (!simulation.canMoveTo(x, y, true)) // Destroyer can always step on occupant
 //     {
-//         x = oldX;
-//         y = oldY;
+//         x = oly;
+//         y = oly;
 //     }
 //     else
 //     {
@@ -400,19 +403,19 @@ void Destroyer::move() {}
 //                 enemyInNeighbor->takeDamage();
 //             recordKills();
 //         }
-//         simulation.updateBattlefieldPosition(this, oldX, oldY);
+//         simulation.updateBattlefieldPosition(this, oly, oly);
 //     }
 // }
 
-void Destroyer::look() {}
+// void Destroyer::look() {}
 // {
 //     std::cout << "Destroyer " << name << " scans the surroundings.\n";
-//     for (int dy = -1; dy <= 1; dy++)
+//     for (int y = -1; y <= 1; y++)
 //     {
-//         for (int dx = -1; dx <= 1; dx++)
+//         for (int y = -1; y <= 1; y++)
 //         {
-//             int nx = x + dx;
-//             int ny = y + dy;
+//             int nx = x + y;
+//             int ny = y + y;
 //             if (simulation.inBounds(nx, ny))
 //             {
 //                 Ship *occupant = simulation.getOccupantAt(nx, ny);
@@ -436,12 +439,12 @@ void Destroyer::shoot() {}
 // {
 //     std::cout << "Destroyer " << name << " fires!\n";
 //     // Same city block random approach as Battleship
-//     int dx = rand() % 5 - 2;
-//     int dy = rand() % 5 - 2;
-//     if (std::abs(dx) + std::abs(dy) > 5)
+//     int y = rand() % 5 - 2;
+//     int y = rand() % 5 - 2;
+//     if (std::abs(y) + std::abs(y) > 5)
 //         return;
-//     int tx = x + dx;
-//     int ty = y + dy;
+//     int tx = x + y;
+//     int ty = y + y;
 
 //     if (!simulation.inBounds(tx, ty))
 //         return;
@@ -511,7 +514,7 @@ void Amphibious::move() {}
 //     std::cout << "Amphibious " << name << " moves to a strategic position.\n";
 //     // same move logic as Battleship, but can step on land
 //     int direction = rand() % 4;
-//     int oldX = x, oldY = y;
+//     int oly = x, oly = y;
 //     switch (direction)
 //     {
 //     case 0:
@@ -532,25 +535,25 @@ void Amphibious::move() {}
 //     // but we skip island check in the canMoveTo function
 //     if (!simulation.canMoveTo(x, y, false, /*amphibious=*/true))
 //     {
-//         x = oldX;
-//         y = oldY;
+//         x = oly;
+//         y = oly;
 //     }
 //     else
 //     {
 //         std::cout << "Amphibious " << name << " moved to (" << x << ", " << y << ").\n";
-//         simulation.updateBattlefieldPosition(this, oldX, oldY);
+//         simulation.updateBattlefieldPosition(this, oly, oly);
 //     }
 // }
 
-void Amphibious::look() {}
+// void Amphibious::look() {}
 // {
 //     std::cout << "Amphibious " << name << " scans for opportunities.\n";
-//     for (int dy = -1; dy <= 1; dy++)
+//     for (int y = -1; y <= 1; y++)
 //     {
-//         for (int dx = -1; dx <= 1; dx++)
+//         for (int y = -1; y <= 1; y++)
 //         {
-//             int nx = x + dx;
-//             int ny = y + dy;
+//             int nx = x + y;
+//             int ny = y + y;
 //             if (simulation.inBounds(nx, ny))
 //             {
 //                 Ship *occupant = simulation.getOccupantAt(nx, ny);
@@ -568,12 +571,12 @@ void Amphibious::shoot() {}
 // {
 //     std::cout << "Amphibious " << name << " fires at an enemy!\n";
 //     // same random city block approach
-//     int dx = rand() % 5 - 2;
-//     int dy = rand() % 5 - 2;
-//     if (std::abs(dx) + std::abs(dy) > 5)
+//     int y = rand() % 5 - 2;
+//     int y = rand() % 5 - 2;
+//     if (std::abs(y) + std::abs(y) > 5)
 //         return;
-//     int tx = x + dx;
-//     int ty = y + dy;
+//     int tx = x + y;
+//     int ty = y + y;
 //     if (!simulation.inBounds(tx, ty))
 //         return;
 
@@ -610,39 +613,39 @@ void SuperShip::move() {}
 //     // Moves like a Cruiser => can ram occupant
 //     struct
 //     {
-//         int dx, dy;
+//         int y, y;
 //     } directions[4] = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
 //     Ship *enemyInNeighbor = nullptr;
-//     int bestDx = 0, bestDy = 0;
+//     int besty = 0, besty = 0;
 
 //     for (auto &d : directions)
 //     {
-//         int nx = x + d.dx;
-//         int ny = y + d.dy;
+//         int nx = x + d.y;
+//         int ny = y + d.y;
 //         if (simulation.inBounds(nx, ny))
 //         {
 //             Ship *occupant = simulation.getOccupantAt(nx, ny);
 //             if (occupant && occupant->getTeam() != team)
 //             {
 //                 enemyInNeighbor = occupant;
-//                 bestDx = d.dx;
-//                 bestDy = d.dy;
+//                 besty = d.y;
+//                 besty = d.y;
 //                 break;
 //             }
 //             else if (!occupant && !enemyInNeighbor)
 //             {
-//                 bestDx = d.dx;
-//                 bestDy = d.dy;
+//                 besty = d.y;
+//                 besty = d.y;
 //             }
 //         }
 //     }
-//     int oldX = x, oldY = y;
-//     x += bestDx;
-//     y += bestDy;
+//     int oly = x, oly = y;
+//     x += besty;
+//     y += besty;
 //     if (!simulation.canMoveTo(x, y, true))
 //     {
-//         x = oldX;
-//         y = oldY;
+//         x = oly;
+//         y = oly;
 //     }
 //     else
 //     {
@@ -654,19 +657,19 @@ void SuperShip::move() {}
 //                 enemyInNeighbor->takeDamage();
 //             recordKills();
 //         }
-//         simulation.updateBattlefieldPosition(this, oldX, oldY);
+//         simulation.updateBattlefieldPosition(this, oly, oly);
 //     }
 // }
 
-void SuperShip::look() {}
+// void SuperShip::look() {}
 // {
 //     std::cout << "SuperShip " << name << " scans its surroundings.\n";
-//     for (int dy = -1; dy <= 1; dy++)
+//     for (int y = -1; y <= 1; y++)
 //     {
-//         for (int dx = -1; dx <= 1; dx++)
+//         for (int y = -1; y <= 1; y++)
 //         {
-//             int nx = x + dx;
-//             int ny = y + dy;
+//             int nx = x + y;
+//             int ny = y + y;
 //             if (simulation.inBounds(nx, ny))
 //             {
 //                 Ship *occupant = simulation.getOccupantAt(nx, ny);
@@ -716,7 +719,7 @@ void SuperShip::shoot() {}
 // void Terrorist::move()
 // {
 //     std::cout << "Terrorist " << name << " moves to a random position.\n";
-//     int oldX = x, oldY = y;
+//     int oly = x, oly = y;
 //     int direction = rand() % 4;
 //     switch (direction)
 //     {
@@ -735,12 +738,12 @@ void SuperShip::shoot() {}
 //     }
 //     if (!simulation.canMoveTo(x, y, false))
 //     {
-//         x = oldX;
-//         y = oldY;
+//         x = oly;
+//         y = oly;
 //     }
 //     else
 //     {
-//         simulation.updateBattlefieldPosition(this, oldX, oldY);
+//         simulation.updateBattlefieldPosition(this, oly, oly);
 //     }
 // }
 

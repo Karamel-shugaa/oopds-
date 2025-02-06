@@ -9,8 +9,7 @@ class Battlefield
 {
 private:
     int width, height;
-    char **grid = nullptr;
-    bool **islandGrid; // For amphibious checks
+    char **grid;
     void read_grid(std::ifstream &file);
 
 public:
@@ -21,10 +20,7 @@ public:
     void display();
     int getWidth() const { return width; }
     int getHeight() const { return height; }
-    bool isCellValid(int x, int y) const;              // For normal ships
-    bool isCellValidForAmphibious(int x, int y) const; // For amphibious
-    void loadMatrix(int **m);
-
+    bool inBounds(int x, int y) const;
     // Additional getters for occupant
     char getCell(int x, int y) const;
     void setCell(int x, int y, char val);

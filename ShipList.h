@@ -1,24 +1,26 @@
 #ifndef SHIPLIST_H
 #define SHIPLIST_H
 
-class Ship; // Forward declaration
+#include <memory>
+#include "Ship.h"
 
 class ShipList
 {
 private:
     struct Node
     {
-        Ship *ship;
-        Node *next;
-        Node(Ship *s) : ship(s), next(nullptr) {}
+        std::unique_ptr<Ship> ship;
+        std::unique_ptr<Node> next;
+        // move to transfer ownership
+        Node(std::unique_ptr<Ship> s) : ship(std::move(s)), next(nullptr) {}
     };
-    Node *head;
+    std::unique_ptr<Node> head;
 
 public:
     ShipList();
-    ~ShipList();
-    void append(Ship *ship);
-    void remove(Ship *ship);
+    void append(std::unique_ptr<Ship>);
+    // use raw pointer to remove from list (not delete yet)
+    void remove(Ship *);
     void display();
 
     class Iterator
@@ -28,11 +30,11 @@ public:
     public:
         Iterator(Node *node) : current(node) {}
         bool operator!=(const Iterator &other) { return current != other.current; }
-        void operator++() { current = current->next; }
-        Ship *operator*() { return current ? current->ship : nullptr; }
+        void operator++() { current = current->next.get(); }
+        Ship *operator*() { return current ? current->ship.get() : nullptr; }
     };
 
-    Iterator begin() { return Iterator(head); }
+    Iterator begin() { return Iterator(head.get()); }
     Iterator end() { return Iterator(nullptr); }
 };
 

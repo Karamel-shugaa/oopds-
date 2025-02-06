@@ -83,10 +83,15 @@ void Battlefield::read_grid(std::ifstream &file)
 
 void Battlefield::display()
 {
-    std::cout << "Width: " << width << std::endl;
-    std::cout << "Height: " << height << std::endl;
+    std::cout << "  ";
+    for (int i = 0; i < width; i++)
+    {
+        std::cout << " " << i;
+    }
+    std::cout << std::endl;
     for (int i = 0; i < height; i++)
     {
+        std::cout << i << ": ";
         for (int j = 0; j < width; j++)
         {
             std::cout << grid[i][j] << ' ';
@@ -100,75 +105,37 @@ void Battlefield::placeShip(Ship *ship)
     // give it a random position on grid where grid[x][y] == '0'
     int x = rand() % width;
     int y = rand() % height;
-    while (grid[x][y] != '0')
+    while (grid[y][x] != '0')
     {
         std::cout << "Invalid position (" << x << ", " << y << ") for " << ship->getSymbol() << ". Retrying...\n";
-        std::cout << "Grid at x y:" << grid[x][y] << std::endl;
+        std::cout << "Grid at x y:" << grid[y][x] << std::endl;
         x = rand() % width;
         y = rand() % height;
     }
     ship->setPosition(x, y);
     std::cout << "Placing " << ship->getSymbol() << " at (" << x << ", " << y << ")\n";
-    grid[x][y] = ship->getSymbol();
-}
-
-void Battlefield::moveShip(Ship *ship, int oldX, int oldY)
-{
-    // old cell -> '.'
-    if (oldY >= 0 && oldY < height && oldX >= 0 && oldX < width)
-    {
-        grid[oldY][oldX] = '.';
-    }
-    int sx = ship->getX();
-    int sy = ship->getY();
-    grid[sy][sx] = ship->getSymbol();
-}
-
-bool Battlefield::isCellValid(int x, int y) const
-{
-    if (x < 0 || x >= width || y < 0 || y >= height)
-        return false;
-    if (grid[y][x] != '.')
-        return false; // Must be empty for normal ships
-    if (islandGrid[y][x])
-        return false; // Must not be island
-    return true;
-}
-
-bool Battlefield::isCellValidForAmphibious(int x, int y) const
-{
-    // Amphibious can move onto '.' or '1' (island)
-    if (x < 0 || x >= width || y < 0 || y >= height)
-        return false;
-    // Cannot step on occupant if occupant is not '.' or '1'
-    if (grid[y][x] != '.' && grid[y][x] != '1')
-        return false;
-    return true;
-}
-
-void Battlefield::loadMatrix(int **matrix)
-{
-    for (int i = 0; i < height; i++)
-    {
-        for (int j = 0; j < width; j++)
-        {
-            islandGrid[i][j] = (matrix[i][j] == 1);
-            grid[i][j] = islandGrid[i][j] ? '1' : '.';
-        }
-    }
+    grid[y][x] = ship->getSymbol();
 }
 
 char Battlefield::getCell(int x, int y) const
 {
-    if (x < 0 || x >= width || y < 0 || y >= height)
-        return '~'; // invalid
-    return grid[x][y];
+    if (inBounds(x, y))
+        return grid[y][x];
+    return 'X'; // Out of bounds
 }
 
 void Battlefield::setCell(int x, int y, char val)
 {
-    if (x >= 0 && x < width && y >= 0 && y < height)
+    std::cout << "Setting cell " << x << " " << y << " to " << val << std::endl;
+
+    if (!inBounds(x, y))
     {
-        grid[y][x] = val;
+        std::cerr << "Error: setCell(" << x << ", " << y << ") out of bounds. Grid size: " << height << "x" << width << std::endl;
+        return;
     }
+    grid[y][x] = val; 
+}
+bool Battlefield::inBounds(int x, int y) const
+{
+    return (x >= 0 && x < width && y >= 0 && y < height);
 }

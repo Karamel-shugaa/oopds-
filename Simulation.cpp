@@ -8,7 +8,7 @@
 #include <sstream>
 #include <iostream>
 
-Simulation::Simulation(std::string filename) : battlefield(filename), shipCount(0)
+Simulation::Simulation(std::string filename) : Battlefield(filename), shipCount(0)
 {
     std::cout << "Simulation created.\n";
     std::ifstream file(filename);
@@ -102,10 +102,10 @@ void Simulation::read_teams_details(std::ifstream &file)
 }
 
 // polymorphism used here
-Ship *Simulation::createShip(const std::string &ship_name)
+std::unique_ptr<Ship> Simulation::createShip(const std::string &ship_name)
 {
     if (ship_name == "Battleship")
-        return new BattleShip(*this);
+        return std::make_unique<BattleShip>(*this);
     // else if (ship_name == "Cruiser")
     //     return new Cruiser(*this);
     // else if (ship_name == "Destroyer")
@@ -130,33 +130,29 @@ void Simulation::load_ship(std::string &shipName, char &symbol, char &team, int 
     //                setname  setsymbol for N ships for team "team"
     for (int i = 0; i < count; i++)
     {
-        Ship *ship = createShip(shipName);
+        std::unique_ptr<Ship> ship = createShip(shipName);
         if (ship == nullptr)
         {
             std::cerr << "Error: Could not create ship " << shipName << "\n";
             return;
         }
         // give it a random position on map
-        int x = rand() % battlefield.getWidth();
-        int y = rand() % battlefield.getHeight();
+        int x = rand() % getWidth();
+        int y = rand() % getHeight();
         ship->setPosition(x, y);
         // set details
         ship->setSymbol(symbol);
         ship->setTeam(team);
+        ship->setName(shipName);
         std::cout << "Ship " << shipName << " created.\n";
-        addShip(ship);
+        addShip(std::move(ship));
     }
 }
 
-void Simulation::addShip(Ship *ship)
+void Simulation::addShip(std::unique_ptr<Ship> ship)
 {
-    battlefield.placeShip(ship);
-    activeShips.append(ship);
-}
-
-void Simulation::display()
-{
-    battlefield.display();
+    placeShip(ship.get());
+    activeShips.append(std::move(ship));
 }
 // void Simulation::respawnShips()
 // {
@@ -204,7 +200,7 @@ void Simulation::run()
     for (int i = 0; i < iterations; i++)
     {
         std::cout << "\nTurn " << i + 1 << ":\n";
-        battlefield.display();
+        display();
         // Let each ship take a turn
         ShipList::Iterator it = activeShips.begin();
         while (it != activeShips.end())
@@ -255,16 +251,7 @@ void Simulation::run()
 //     }
 // }
 
-bool Simulation::inBounds(int x, int y)
-{
-    if (x < 0 || x >= battlefield.getWidth())
-        return false;
-    if (y < 0 || y >= battlefield.getHeight())
-        return false;
-    return true;
-}
-
-Ship *Simulation::getOccupantAt(int x, int y)
+Ship *Simulation::getShipAt(int x, int y)
 {
     // We'll iterate the activeShips list to see if any ship is at (x,y)
     ShipList::Iterator it = activeShips.begin();
@@ -280,6 +267,10 @@ Ship *Simulation::getOccupantAt(int x, int y)
     return nullptr;
 }
 
+void Simulation::removeShip(Ship *s)
+{
+    activeShips.remove(s);
+}
 // bool Simulation::canMoveTo(int x, int y, bool canOccupyEnemy, bool amphibious)
 // {
 //     if (!inBounds(x, y))
@@ -314,7 +305,7 @@ Ship *Simulation::getOccupantAt(int x, int y)
 // void Simulation::upgradeShip(Ship *oldShip, const std::string &newType)
 // {
 //     // remove old from active list (but do not delete yet)
-//     activeShips.removeShip(oldShip);
+//     activeShips.remove(oldShip);
 
 //     // Create new object of newType at same coords, same kills
 //     int oldX = oldShip->getX();
