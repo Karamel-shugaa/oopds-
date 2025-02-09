@@ -1,10 +1,16 @@
-Iterations 100
+Iterations 10
 width 10
 height 10
-Team A 1
-SuperShip - 1
+Team A 7
+Battleship # 1
+Cruiser $ 1
+Destroyer % 1
+Frigate & 1
+Corvette & 1
+Supership @ 1
+Amphibious * 1
 Team B 1
-SuperShip + 1
+Cruiser < 10
 
 0 0 0 0 0 0 0 0 0 0
 0 0 0 0 0 0 0 1 1 0

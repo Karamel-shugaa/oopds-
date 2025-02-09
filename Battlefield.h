@@ -7,7 +7,7 @@ class Ship; // Forward declare
 
 class Battlefield
 {
-private:
+protected:
     int width, height;
     char **grid;
     void read_grid(std::ifstream &file);
@@ -15,13 +15,11 @@ private:
 public:
     Battlefield(std::string);
     ~Battlefield();
-    void placeShip(Ship *ship);
-    void moveShip(Ship *ship, int oldX, int oldY);
+    bool placeShip(Ship *ship, bool isRespawn = false);
     void display();
     int getWidth() const { return width; }
     int getHeight() const { return height; }
     bool inBounds(int x, int y) const;
-    // Additional getters for occupant
     char getCell(int x, int y) const;
     void setCell(int x, int y, char val);
 };

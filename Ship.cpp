@@ -2,8 +2,6 @@
 #include "ShipList.h" // Because we use ShipList::Iterator in shoot()
 #include "Simulation.h"
 #include <cstdlib>
-#include <chrono>
-#include <thread>
 #include <iostream>
 #include <cmath>
 
@@ -29,25 +27,29 @@ void Ship::setName(std::string newName)
     name = newName;
 }
 
-// void Ship::setLives(int life) { lives = life; }
-// int Ship::getKills() const { return kills; }
-// bool Ship::getDeathFlag() const { return deathflag; }
-// std::string Ship::getTeam() const { return team; }
-
 void Ship::die()
 {
-    simulation.setCell(cell.x, cell.y, '0'); // Mark cell as empty
+    if (name == "Amphibious")
+    {
+        simulation.setCell(cell.x, cell.y, islandOrSea);
+    }
+    if (lives <= 0)
+    {
+        std::cout << "ship is already dead" << std::endl;
+        return;
+    }
     lives--;
-
     if (lives == 0)
     {
-        std::cout << name << ' ' << team << cell.symbol << " at (" << cell.x << ", " << cell.y << ") has fallen!\n";
+        std::cout << std::flush << name << ' ' << team << cell.symbol << " at (" << cell.x << ", " << cell.y << ") has fallen!\n";
+        simulation.loggingFile << std::flush << name << ' ' << team << cell.symbol << " at (" << cell.x << ", " << cell.y << ") has fallen!\n";
         simulation.removeShip(this);
-        simulation.getRespawnQueue().enqueue(this); // (New) Add ship to respawn queue
     }
     else
     {
-        std::cout << name << ' ' << team << cell.symbol << " at (" << cell.x << ", " << cell.y << ") has " << lives << " lives left.\n";
+        std::cout << std::flush << name << ' ' << team << cell.symbol << " died at (" << cell.x << ", " << cell.y << ") and has " << lives << " life/lives left.\n";
+        simulation.loggingFile << std::flush << name << ' ' << team << cell.symbol << " died at (" << cell.x << ", " << cell.y << ") and has " << lives << " life/lives left.\n";
+        simulation.addToQueue(this);
     }
 }
 
@@ -69,29 +71,27 @@ void Ship::recordKill()
 
 void BattleShip::action()
 {
-    std::cout << "-------------------- BATTLESHIP -------------------- \n";
+    std::cout << "-------------------- BATTLESHIP -------------------- \n\n";
+    simulation.loggingFile << "-------------------- BATTLESHIP -------------------- \n\n";
     std::cout << name << ' ' << team << cell.symbol << " at (" << cell.x << ", " << cell.y << ") started its turn.\n";
+    simulation.loggingFile << name << ' ' << team << cell.symbol << " at (" << cell.x << ", " << cell.y << ") started its turn.\n";
     look();
-    std::this_thread::sleep_for(std::chrono::milliseconds(200));
     move();
-    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    shoot();
+    shoot();
     simulation.display();
-    std::this_thread::sleep_for(std::chrono::milliseconds(200));
-
-    shoot();
-    std::this_thread::sleep_for(std::chrono::milliseconds(200));
-    shoot();
-    // if (kills == 4)
-    // {
-    //     std::cout << name << team << cell.symbol << " has reached 4 kills => upgrading to Cruiser.\n";
-    //     simulation.upgradeShip(this, "Cruiser");
-    // }
+    if (kills >= 3)
+    {
+        simulation.setCell(cell.x, cell.y, 'D');
+        simulation.battleshipToDestroyer(this);
+    }
 }
 
 void BattleShip::look()
 {
     // Implement a 3×3 scan around (x, y)
     std::cout << name << ' ' << team << cell.symbol << " at (" << cell.x << ", " << cell.y << ") is scanning its surroundings.\n";
+    simulation.loggingFile << name << ' ' << team << cell.symbol << " at (" << cell.x << ", " << cell.y << ") is scanning its surroundings.\n";
     int index = 0;
     for (int y = -1; y <= 1; y++)
     {
@@ -104,94 +104,101 @@ void BattleShip::look()
             if (simulation.inBounds(nx, ny))
             {
                 neighbouring[index] = {simulation.getCell(nx, ny), nx, ny};
-                std::cout << "[ " << simulation.getCell(nx, ny) << " at (" << nx << ", " << ny << ") ] ";
             }
 
             index++;
         }
     }
-    std::cout << std::endl;
 }
+
 void BattleShip::move()
 {
-    int freeIndices[8];
-    int freeCount = 0;
-
-    for (int i = 0; i < 8; i++)
+    int directionsIndex[] = {1, 3, 4, 6}; // up, left, right, down
+    int index;
+    bool free = false;
+    for (int i : directionsIndex)
     {
         if (neighbouring[i].symbol == '0')
         {
-            freeIndices[freeCount] = i;
-            freeCount++;
+            free = true;
+            break;
         }
     }
-
-    if (freeCount == 0) // No free spaces, avoid infinite loop
+    if (!free)
     {
-        std::cout << name << " cannot move.\n";
+        std::cout << name << ' ' << team << cell.symbol << " at (" << cell.x << ", " << cell.y << ") cannot move.\n";
+        simulation.loggingFile << name << ' ' << team << cell.symbol << " at (" << cell.x << ", " << cell.y << ") cannot move.\n";
         return;
     }
+    // loop until valid move position found
+    do
+    {
+        index = directionsIndex[rand() % 4];
+    } while (neighbouring[index].symbol != '0');
 
-    int index = freeIndices[rand() % freeCount];
-
-    std::cout << name << " is moving to (" << neighbouring[index].x << ", " << neighbouring[index].y << ").\n";
     simulation.setCell(cell.x, cell.y, '0');
     setPosition(neighbouring[index].x, neighbouring[index].y);
     simulation.setCell(cell.x, cell.y, cell.symbol);
+    std::cout << name << ' ' << team << cell.symbol << " moved to (" << cell.x << ", " << cell.y << ").\n";
+    simulation.loggingFile << name << ' ' << team << cell.symbol << " moved to (" << cell.x << ", " << cell.y << ").\n";
 }
 
 void BattleShip::shoot()
 {
-    int dx, dy, target_x, target_y;
-    Ship *target = nullptr;
-
+    int dx, dy;
     do
     {
-        dx = (rand() % 11) - 5; // -5 to 5
+        dx = (rand() % 11) - 5; // num between -5 and 5
         dy = (rand() % 11) - 5;
-    } while (abs(dx) + abs(dy) > 5 && (dx == 0 && dy == 0));
-    // Prevent shooting at (0,0)
-
-    target_x = cell.x + dx;
-    target_y = cell.y + dy;
-
-    target = simulation.getShipAt(target_x, target_y);
-
-    // Prevent friendly fire and keeps shooting in bounds
-    if (!simulation.inBounds(target_x, target_y) || (target != nullptr && target->getTeam() == team))
+    } while (abs(dx) + abs(dy) > 5 || (dx == 0 && dy == 0)); // avoid self targeting and limit to city block distance of 5
+    int target_x = cell.x + dx;
+    int target_y = cell.y + dy;
+    Ship *target = simulation.getShipAt(target_x, target_y);
+    if (target != nullptr)
     {
-        // shooting action
-        if (target != nullptr)
+        if (target->getTeam() != team)
         {
-            std::cout << name << " shot at (" << target_x << "," << target_y
-                      << ") and destroyed " << target->getName() << "!\n";
+            std::cout << name << ' ' << team << cell.symbol << " at (" << cell.x << ", " << cell.y << ") shot at (" << target_x << ", " << target_y << ") and hit " << target->getTeam() << ' ' << target->getSymbol() << "!\n";
+            simulation.loggingFile << name << ' ' << team << cell.symbol << " at (" << cell.x << ", " << cell.y << ") shot at (" << target_x << ", " << target_y << ") and hit " << target->getTeam() << ' ' << target->getSymbol() << "!\n";
+            simulation.setCell(target_x, target_y, '0');
             target->die();
             recordKill();
         }
         else
         {
-            std::cout << name << " shot at (" << target_x << "," << target_y
-                      << ") and missed!\n";
+            std::cout << name << " at (" << cell.x << ", " << cell.y << ") fires at (" << target_x << ", " << target_y << ") and misses.\n";
+            simulation.loggingFile << name << " at (" << cell.x << ", " << cell.y << ") fires at (" << target_x << ", " << target_y << ") and misses.\n";
         }
+    }
+    else
+    {
+        std::cout << name << " at (" << cell.x << ", " << cell.y << ") fires at (" << target_x << ", " << target_y << ") and misses.\n";
+        simulation.loggingFile << name << " at (" << cell.x << ", " << cell.y << ") fires at (" << target_x << ", " << target_y << ") and misses.\n";
     }
 }
 
 //-------------Cruiser------------------
 void Cruiser::action()
 {
-    std::cout << "-------------------- CRUISER -------------------- \n";
+    std::cout << "-------------------- CRUISER -------------------- \n\n";
+    simulation.loggingFile << "-------------------- CRUISER -------------------- \n\n";
     std::cout << name << ' ' << team << cell.symbol << " at (" << cell.x << ", " << cell.y << ") started its turn.\n";
+    simulation.loggingFile << name << ' ' << team << cell.symbol << " at (" << cell.x << ", " << cell.y << ") started its turn.\n";
     look();
-    std::this_thread::sleep_for(std::chrono::milliseconds(200));
     moveorram();
-    std::this_thread::sleep_for(std::chrono::milliseconds(200));
     simulation.display();
-    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    if (kills >= 3)
+    {
+        simulation.setCell(cell.x, cell.y, 'D');
+        simulation.cruiserToDestroyer(this);
+    }
 }
 void Cruiser::look()
 {
+    enemyShips.clear();
     // Implement a 3×3 scan around (x, y)
     std::cout << name << "  " << team << cell.symbol << " at (" << cell.x << ", " << cell.y << ") is scanning its surroundings.\n";
+    simulation.loggingFile << name << "  " << team << cell.symbol << " at (" << cell.x << ", " << cell.y << ") is scanning its surroundings.\n";
     int index = 0;
     for (int y = -1; y <= 1; y++)
     {
@@ -204,94 +211,253 @@ void Cruiser::look()
             if (simulation.inBounds(nx, ny))
             {
                 neighbouring[index] = {simulation.getCell(nx, ny), nx, ny};
-                std::cout << "[ " << simulation.getCell(nx, ny) << " at (" << nx << ", " << ny << ") ] ";
+                if (index == 1 || index == 3 || index == 4 || index == 6)
+                {
+                    Ship *neighbouringShip = simulation.getShipAt(nx, ny);
+                    if (neighbouringShip != nullptr)
+                    {
+                        if (neighbouringShip->getTeam() != team)
+                        {
+                            enemyShips.append(neighbouringShip);
+                        }
+                    }
+                }
             }
-
             index++;
         }
     }
-    std::cout << std::endl;
 }
+
 void Cruiser::move()
 {
-    int freeIndices[8];
-    int freeCount = 0;
-
-    for (int i = 0; i < 8; i++)
+    int directionsIndex[] = {1, 3, 4, 6}; // up, left, right, down
+    int index;
+    bool free = false;
+    for (int i : directionsIndex)
     {
         if (neighbouring[i].symbol == '0')
         {
-            freeIndices[freeCount] = i;
-            freeCount++;
+            free = true;
+            break;
         }
     }
-
-    if (freeCount == 0) // No free spaces, avoid infinite loop
+    if (!free)
     {
-        std::cout << name << " cannot move.\n";
+        std::cout << name << ' ' << team << cell.symbol << " at (" << cell.x << ", " << cell.y << ") cannot move.\n";
+        simulation.loggingFile << name << ' ' << team << cell.symbol << " at (" << cell.x << ", " << cell.y << ") cannot move.\n";
         return;
     }
+    // loop until valid move position found
+    do
+    {
+        index = directionsIndex[rand() % 4];
+    } while (neighbouring[index].symbol != '0');
 
-    int index = freeIndices[rand() % freeCount];
-
-    std::cout << name << " is moving to (" << neighbouring[index].x << ", " << neighbouring[index].y << ").\n";
     simulation.setCell(cell.x, cell.y, '0');
     setPosition(neighbouring[index].x, neighbouring[index].y);
     simulation.setCell(cell.x, cell.y, cell.symbol);
+    std::cout << name << ' ' << team << cell.symbol << " moved to (" << cell.x << ", " << cell.y << ").\n";
+    simulation.loggingFile << name << ' ' << team << cell.symbol << " moved to (" << cell.x << ", " << cell.y << ").\n";
 }
 
 void Cruiser::ram()
 {
-    int index = 0;
-    Ship *target = nullptr;
-
-    while (index < 8)
+    Ship *target = enemyShips.getRandom();
+    if (target == nullptr)
     {
-        target = simulation.getShipAt(neighbouring[index].x, neighbouring[index].y);
-
-        if (target == nullptr || target->getTeam() == team)
-        {
-            index++;
-            continue;
-        }
-
-        std::cout << name << " RAMMED and DESTROYED!! " << target->getName() << " at (" << neighbouring[index].x << ", " << neighbouring[index].y << ")!\n";
-
-        target->die();
-        recordKill();
-
-        // Move into the ramming position
-        simulation.setCell(cell.x, cell.y, '0'); // Clear old position
-        setPosition(neighbouring[index].x, neighbouring[index].y);
-        simulation.setCell(cell.x, cell.y, cell.symbol);
-
+        std::cout << "Cruiser returned null target\n";
         return;
     }
+    std::cout << name << ' ' << team << cell.symbol << " at (" << cell.x << ", " << cell.y << ") is ramming enemy at (" << target->getX() << ", " << target->getY() << ").\n";
+    simulation.loggingFile << name << ' ' << team << cell.symbol << " at (" << cell.x << ", " << cell.y << ") is ramming enemy at (" << target->getX() << ", " << target->getY() << ").\n";
+    simulation.setCell(cell.x, cell.y, '0');
+    setPosition(target->getX(), target->getY());
+    simulation.setCell(cell.x, cell.y, cell.symbol);
+    target->die();
+    recordKill();
+    std::cout << name << ' ' << team << cell.symbol << " moved to (" << cell.x << ", " << cell.y << ").\n";
+    simulation.loggingFile << name << ' ' << team << cell.symbol << " moved to (" << cell.x << ", " << cell.y << ").\n";
 }
 void Cruiser::moveorram()
 {
-    for (int i = 0; i < 8; i++)
+    if (enemyShips.empty())
     {
-        Ship *target = simulation.getShipAt(neighbouring[i].x, neighbouring[i].y);
-        if (target != nullptr && target->getTeam() != team)
+        move();
+        return;
+    }
+    ram();
+}
+
+// ------------- Destroyer -------------
+
+void Destroyer::action()
+{
+    std::cout << "-------------------- DESTROYER -------------------- \n\n";
+    std::cout << name << ' ' << team << cell.symbol << " at (" << cell.x << ", " << cell.y << ") started its turn.\n";
+    simulation.loggingFile << "-------------------- DESTROYER -------------------- \n\n";
+    simulation.loggingFile << name << ' ' << team << cell.symbol << " at (" << cell.x << ", " << cell.y << ") started its turn.\n";
+    look();
+    moveorram();
+    shoot();
+    shoot();
+    simulation.display();
+    if (kills >= 3)
+    {
+        simulation.setCell(cell.x, cell.y, 'S');
+        simulation.destroyerToSupership(this);
+    }
+}
+
+void Destroyer::shoot()
+{
+    int dx, dy;
+    do
+    {
+        dx = (rand() % 11) - 5; // num between -5 and 5
+        dy = (rand() % 11) - 5;
+    } while (abs(dx) + abs(dy) > 5 || (dx == 0 && dy == 0)); // avoid self targeting and limit to city block distance of 5
+    int target_x = cell.x + dx;
+    int target_y = cell.y + dy;
+
+    if (!simulation.inBounds(target_x, target_y))
+    {
+        std::cout << name << ' ' << team << cell.symbol << " at (" << cell.x << ", " << cell.y << ") shot at (" << target_x << ", " << target_y << ") and missed (out of bounds).\n";
+        simulation.loggingFile << name << ' ' << team << cell.symbol << " at (" << cell.x << ", " << cell.y << ") shot at (" << target_x << ", " << target_y << ") and missed (out of bounds).\n";
+        return;
+    }
+    Ship *target = simulation.getShipAt(target_x, target_y);
+    if (target != nullptr)
+    {
+        if (target->getTeam() != team)
         {
-            ram();
-            return;
+            std::cout << name << ' ' << team << cell.symbol << " at (" << cell.x << ", " << cell.y << ") shot at (" << target_x << ", " << target_y << ") and hit " << target->getTeam() << ' ' << target->getSymbol() << "!\n";
+            simulation.loggingFile << name << ' ' << team << cell.symbol << " at (" << cell.x << ", " << cell.y << ") shot at (" << target_x << ", " << target_y << ") and hit " << target->getTeam() << ' ' << target->getSymbol() << "!\n";
+            simulation.setCell(target_x, target_y, '0');
+            target->die();
+            recordKill();
+        }
+        else
+        {
+            std::cout << name << " at (" << cell.x << ", " << cell.y << ") fires at (" << target_x << ", " << target_y << ") and misses.\n";
+            simulation.loggingFile << name << " at (" << cell.x << ", " << cell.y << ") fires at (" << target_x << ", " << target_y << ") and misses.\n";
         }
     }
-    move();
+    else
+    {
+        std::cout << name << " at (" << cell.x << ", " << cell.y << ") fires at (" << target_x << ", " << target_y << ") and misses.\n";
+        simulation.loggingFile << name << " at (" << cell.x << ", " << cell.y << ") fires at (" << target_x << ", " << target_y << ") and misses.\n";
+    }
+}
+
+void Destroyer::look()
+{
+    enemyShips.clear();
+    // Implement a 3×3 scan around (x, y)
+    std::cout << name << ' ' << team << cell.symbol << " at (" << cell.x << ", " << cell.y << ") is scanning its surroundings.\n";
+    simulation.loggingFile << name << ' ' << team << cell.symbol << " at (" << cell.x << ", " << cell.y << ") is scanning its surroundings.\n";
+    int index = 0;
+    for (int y = -1; y <= 1; y++)
+    {
+        for (int x = -1; x <= 1; x++)
+        {
+            int nx = cell.x + x;
+            int ny = cell.y + y;
+            if (ny == cell.y && nx == cell.x)
+                continue;
+            if (simulation.inBounds(nx, ny))
+            {
+                neighbouring[index] = {simulation.getCell(nx, ny), nx, ny};
+                if (index == 1 || index == 3 || index == 4 || index == 6)
+                {
+                    Ship *neighbouringShip = simulation.getShipAt(nx, ny);
+                    if (neighbouringShip != nullptr)
+                    {
+                        if (neighbouringShip->getTeam() != team)
+                            enemyShips.append(neighbouringShip);
+                    }
+                }
+            }
+            index++;
+        }
+    }
+}
+
+void Destroyer::move()
+{
+    int directionsIndex[] = {1, 3, 4, 6}; // up, left, right, down
+    int index;
+    bool free = false;
+    for (int i : directionsIndex)
+    {
+        if (neighbouring[i].symbol == '0')
+        {
+            free = true;
+            break;
+        }
+    }
+    if (!free)
+    {
+        std::cout << name << ' ' << team << cell.symbol << " at (" << cell.x << ", " << cell.y << ") cannot move.\n";
+        simulation.loggingFile << name << ' ' << team << cell.symbol << " at (" << cell.x << ", " << cell.y << ") cannot move.\n";
+        return;
+    }
+    // loop until valid move position found
+    do
+    {
+        index = directionsIndex[rand() % 4];
+    } while (neighbouring[index].symbol != '0');
+
+    simulation.setCell(cell.x, cell.y, '0');
+    setPosition(neighbouring[index].x, neighbouring[index].y);
+    simulation.setCell(cell.x, cell.y, cell.symbol);
+    std::cout << name << ' ' << team << cell.symbol << " moved to (" << cell.x << ", " << cell.y << ").\n";
+    simulation.loggingFile << name << ' ' << team << cell.symbol << " moved to (" << cell.x << ", " << cell.y << ").\n";
+}
+
+void Destroyer::ram()
+{
+    Ship *target = enemyShips.getRandom();
+    if (target == nullptr)
+    {
+        std::cout << "Destroyer returned null target\n";
+        return;
+    }
+    std::cout << name << ' ' << team << cell.symbol << " at (" << cell.x << ", " << cell.y << ") is ramming enemy at (" << target->getX() << ", " << target->getY() << ").\n";
+    simulation.loggingFile << name << ' ' << team << cell.symbol << " at (" << cell.x << ", " << cell.y << ") is ramming enemy at (" << target->getX() << ", " << target->getY() << ").\n";
+    simulation.setCell(cell.x, cell.y, '0');
+    setPosition(target->getX(), target->getY());
+    simulation.setCell(cell.x, cell.y, cell.symbol);
+    target->die();
+    recordKill();
+    std::cout << name << ' ' << team << cell.symbol << " moved to (" << cell.x << ", " << cell.y << ").\n";
+    simulation.loggingFile << name << ' ' << team << cell.symbol << " moved to (" << cell.x << ", " << cell.y << ").\n";
+}
+
+void Destroyer::moveorram()
+{
+    if (enemyShips.empty())
+    {
+        move();
+        return;
+    }
+    ram();
 }
 
 //-------------Frigate------------------
 
 void Frigate::action()
 {
-    std::cout << "-------------------- FRIGATE -------------------- \n";
+    std::cout << "-------------------- FRIGATE -------------------- \n\n";
+    simulation.loggingFile << "-------------------- FRIGATE -------------------- \n\n";
     std::cout << name << ' ' << team << cell.symbol << " at (" << cell.x << ", " << cell.y << ") started its turn.\n";
-    simulation.display();
-    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    simulation.loggingFile << name << ' ' << team << cell.symbol << " at (" << cell.x << ", " << cell.y << ") started its turn.\n";
     shoot();
-    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    simulation.display();
+    if (kills >= 3)
+    {
+        simulation.setCell(cell.x, cell.y, 'C');
+        simulation.frigateToCorvette(this);
+    }
 }
 
 void Frigate::shoot()
@@ -301,132 +467,135 @@ void Frigate::shoot()
 
     Ship *target = nullptr;
 
-    do
-    {
-        // Calculate the current target position based on `directionIndex`
-        targetx = cell.x + dx[directionIndex];
-        targety = cell.y + dy[directionIndex];
+    targetx = cell.x + dx[directionIndex];
+    targety = cell.y + dy[directionIndex];
 
-        // Get the ship at this position
-        target = simulation.getShipAt(targetx, targety);
+    // get the ship at the current position
+    target = simulation.getShipAt(targetx, targety);
 
-        // Move to the next direction for the next turn
-        nextTarget();
-
-    } while (!simulation.inBounds(targetx, targety) || (target != nullptr && target->getTeam() == team));
-    // Keeps retrying if out of bounds or a teammate is at the target
+    // Move to the next direction for the next turn
+    nextTarget();
 
     // Perform shooting action
     if (target != nullptr)
     {
-        std::cout << name << " shot at (" << targetx << "," << targety << ") and destroyed " << target->getName() << "!\n";
-        target->die();
-        recordKill();
-    }
-    else
-    {
-        std::cout << name << " shot at (" << targetx << "," << targety << ") and missed!\n";
-    }
-}
-
-int Frigate::getTargetX() const { return targetx; }
-int Frigate::getTargetY() const { return targety; }
-void Frigate::nextTarget()
-{
-    directionIndex = (directionIndex + 1) % 8;
-}
-// ------------- Corvette -------------
-
-void Corvette::action()
-{
-    std::cout << "-------------------- CORVETTE -------------------- \n";
-    std::cout << name << ' ' << team << cell.symbol << " at (" << cell.x << ", " << cell.y << ") started its turn.\n";
-    simulation.display();
-    std::this_thread::sleep_for(std::chrono::milliseconds(200));
-    shoot();
-    std::this_thread::sleep_for(std::chrono::milliseconds(200));
-}
-
-// Shoots a random one of the 8 neighboring cells each turn
-void Corvette::shoot()
-{
-    int targetx, targety;
-    Ship *target = nullptr;
-
-    do
-    {
-        int shotDirection = (rand() % 4) + 1; // Picks a random number between 1 and 4
-
-        switch (shotDirection)
+        if (target->getTeam() != team)
         {
-        case 1: // Shoot UP
-            targetx = cell.x;
-            targety = cell.y - 1;
-            break;
-        case 2: // Shoot DOWN
-            targetx = cell.x;
-            targety = cell.y + 1;
-            break;
-        case 3: // Shoot LEFT
-            targetx = cell.x - 1;
-            targety = cell.y;
-            break;
-        case 4: // Shoot RIGHT
-            targetx = cell.x + 1;
-            targety = cell.y;
-            break;
-        }
-
-        target = simulation.getShipAt(targetx, targety);
-        if (target != nullptr)
-        {
-            std::cout << name << " shot at (" << targetx << "," << targety << ") and destroyed " << target->getName() << "!\n";
+            std::cout << name << ' ' << team << cell.symbol << " shot at (" << targetx << ", " << targety << ") and hit " << target->getName() << ' ' << target->getTeam() << target->getSymbol() << "!\n";
+            simulation.loggingFile << name << ' ' << team << cell.symbol << " shot at (" << targetx << ", " << targety << ") and hit " << target->getName() << ' ' << target->getTeam() << target->getSymbol() << "!\n";
+            simulation.setCell(targetx, targety, '0');
             target->die();
             recordKill();
         }
         else
         {
-            std::cout << name << " shot at (" << targetx << "," << targety << ") and missed!\n";
+            std::cout << name << " at (" << cell.x << ", " << cell.y << ") fires at (" << targetx << ", " << targety << ") and misses.\n";
+            simulation.loggingFile << name << " at (" << cell.x << ", " << cell.y << ") fires at (" << targetx << ", " << targety << ") and misses.\n";
         }
-
-    } while (!simulation.inBounds(targetx, targety) || (target != nullptr && target->getTeam() == team));
-    // Keeps retrying if out of bounds or a teammate is at the target
-
-    // Perform shooting action
-    if (target != nullptr)
-    {
-        std::cout << name << ' ' << team << cell.symbol << " at (" << cell.x << ", " << cell.y << ") started its turn.\n";
-        std::cout << name << " shot at (" << targetx << "," << targety
-                  << ") and destroyed " << target->getName() << "!\n";
-        target->die();
-        recordKill();
     }
     else
     {
-        std::cout << name << " shot at (" << targetx << "," << targety << ") and missed!\n";
+        std::cout << name << " at (" << cell.x << ", " << cell.y << ") fires at (" << targetx << ", " << targety << ") and misses.\n";
+        simulation.loggingFile << name << " at (" << cell.x << ", " << cell.y << ") fires at (" << targetx << ", " << targety << ") and misses.\n";
     }
 }
+
+void Frigate::nextTarget()
+{
+    directionIndex = (directionIndex + 1) % 8;
+}
+
+// ------------- Corvette -------------
+
+void Corvette::action()
+{
+    std::cout << "-------------------- CORVETTE -------------------- \n\n";
+    simulation.loggingFile << "-------------------- CORVETTE -------------------- \n\n";
+    std::cout << name << ' ' << team << cell.symbol << " at (" << cell.x << ", " << cell.y << ") started its turn.\n";
+    simulation.loggingFile << name << ' ' << team << cell.symbol << " at (" << cell.x << ", " << cell.y << ") started its turn.\n";
+    look();
+    shoot();
+    simulation.display();
+}
+
+void Corvette::look()
+{
+    // Implement a 3×3 scan around (x, y)
+    std::cout << name << ' ' << team << cell.symbol << " at (" << cell.x << ", " << cell.y << ") is scanning its surroundings.\n";
+    simulation.loggingFile << name << ' ' << team << cell.symbol << " at (" << cell.x << ", " << cell.y << ") is scanning its surroundings.\n";
+    int index = 0;
+    for (int y = -1; y <= 1; y++)
+    {
+        for (int x = -1; x <= 1; x++)
+        {
+            int nx = cell.x + x;
+            int ny = cell.y + y;
+            if (ny == cell.y && nx == cell.x)
+                continue;
+            if (simulation.inBounds(nx, ny))
+            {
+                neighbouring[index] = {simulation.getCell(nx, ny), nx, ny};
+            }
+
+            index++;
+        }
+    }
+}
+
+// shoots a random one of the 8 neighboring cells each turn
+void Corvette::shoot()
+{
+    int neighbourIndex = rand() % 8;
+    int target_x = neighbouring[neighbourIndex].x;
+    int target_y = neighbouring[neighbourIndex].y;
+    Ship *target = simulation.getShipAt(target_x, target_y);
+    if (target != nullptr)
+    {
+        if (target->getTeam() != team)
+        {
+            std::cout << name << ' ' << team << cell.symbol << " at (" << cell.x << ", " << cell.y << ") shot at (" << target_x << ", " << target_y << ") and hit " << target->getTeam() << ' ' << target->getSymbol() << "!\n";
+            simulation.loggingFile << name << ' ' << team << cell.symbol << " at (" << cell.x << ", " << cell.y << ") shot at (" << target_x << ", " << target_y << ") and hit " << target->getTeam() << ' ' << target->getSymbol() << "!\n";
+            simulation.setCell(target_x, target_y, '0');
+            target->die();
+            recordKill();
+        }
+        else
+        {
+            std::cout << name << " at (" << cell.x << ", " << cell.y << ") fires at (" << target_x << ", " << target_y << ") and misses.\n";
+            simulation.loggingFile << name << " at (" << cell.x << ", " << cell.y << ") fires at (" << target_x << ", " << target_y << ") and misses.\n";
+        }
+    }
+    else
+    {
+        std::cout << name << " at (" << cell.x << ", " << cell.y << ") fires at (" << target_x << ", " << target_y << ") and misses.\n";
+        simulation.loggingFile << name << " at (" << cell.x << ", " << cell.y << ") fires at (" << target_x << ", " << target_y << ") and misses.\n";
+    }
+}
+
 // ------------- Amphibious -------------
 void Amphibious::action()
 {
-    std::cout << "-------------------- AMPHIBIOOUS -------------------- \n";
+    std::cout << "-------------------- AMPHIBIOOUS -------------------- \n\n";
+    simulation.loggingFile << "-------------------- AMPHIBIOOUS -------------------- \n\n";
     std::cout << name << ' ' << team << cell.symbol << " at (" << cell.x << ", " << cell.y << ") started its turn.\n";
+    simulation.loggingFile << name << ' ' << team << cell.symbol << " at (" << cell.x << ", " << cell.y << ") started its turn.\n";
     look();
-    std::this_thread::sleep_for(std::chrono::milliseconds(200));
     move();
-    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    shoot();
+    shoot();
     simulation.display();
-    std::this_thread::sleep_for(std::chrono::milliseconds(200));
-    shoot();
-    std::this_thread::sleep_for(std::chrono::milliseconds(200));
-    shoot();
-    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    if (kills >= 4)
+    {
+        simulation.setCell(cell.x, cell.y, 'S');
+        simulation.amphibiousToSupership(this);
+    }
 }
 
 void Amphibious::look()
 {
     // Implement a 3×3 scan around (x, y)
     std::cout << name << ' ' << team << cell.symbol << " at (" << cell.x << ", " << cell.y << ") is scanning its surroundings.\n";
+    simulation.loggingFile << name << ' ' << team << cell.symbol << " at (" << cell.x << ", " << cell.y << ") is scanning its surroundings.\n";
     int index = 0;
     for (int y = -1; y <= 1; y++)
     {
@@ -439,252 +608,98 @@ void Amphibious::look()
             if (simulation.inBounds(nx, ny))
             {
                 neighbouring[index] = {simulation.getCell(nx, ny), nx, ny};
-                std::cout << "[ " << simulation.getCell(nx, ny) << " at (" << nx << ", " << ny << ") ] ";
             }
 
             index++;
         }
     }
-    std::cout << std::endl;
 }
 
 void Amphibious::move()
 {
-    char islandorsea = simulation.getCell(cell.x, cell.y); // to restore old position after moving
-    int freeIndices[8];
-    int freeCount = 0;
-
-    // find valid moving square (0 or 1)
-    for (int i = 0; i < 8; i++)
+    int directionsIndex[] = {1, 3, 4, 6}; // up, left, right, down
+    int index;
+    bool free = false;
+    for (int i : directionsIndex)
     {
         if (neighbouring[i].symbol == '0' || neighbouring[i].symbol == '1')
         {
-            freeIndices[freeCount] = i;
-            freeCount++;
+            free = true;
+            break;
         }
     }
-
-    if (freeCount == 0) // No free spaces, avoid infinite loop
+    if (!free)
     {
-        std::cout << name << " cannot move.\n";
+        std::cout << name << ' ' << team << cell.symbol << " at (" << cell.x << ", " << cell.y << ") cannot move.\n";
+        simulation.loggingFile << name << ' ' << team << cell.symbol << " at (" << cell.x << ", " << cell.y << ") cannot move.\n";
         return;
     }
-
-    int index = freeIndices[rand() % freeCount];
-
-    std::cout << name << " is moving to (" << neighbouring[index].x << ", " << neighbouring[index].y << ").\n";
-    simulation.setCell(cell.x, cell.y, islandorsea);
+    // loop until valid move position found
+    do
+    {
+        index = directionsIndex[rand() % 4];
+    } while (neighbouring[index].symbol != '0' && neighbouring[index].symbol != '1');
+    simulation.setCell(cell.x, cell.y, islandOrSea);
+    islandOrSea = neighbouring[index].symbol;
     setPosition(neighbouring[index].x, neighbouring[index].y);
     simulation.setCell(cell.x, cell.y, cell.symbol);
+    std::cout << name << ' ' << team << cell.symbol << " moved to (" << cell.x << ", " << cell.y << ").\n";
+    simulation.loggingFile << name << ' ' << team << cell.symbol << " moved to (" << cell.x << ", " << cell.y << ").\n";
 }
 
 void Amphibious::shoot()
 {
-    int dx, dy, target_x, target_y;
-    Ship *target = nullptr;
-
+    int dx, dy;
     do
     {
-        dx = (rand() % 11) - 5; // -5 to 5
+        dx = (rand() % 11) - 5; // num between -5 and 5
         dy = (rand() % 11) - 5;
-    } while (abs(dx) + abs(dy) > 5 && (dx == 0 && dy == 0));
-    // Prevent shooting at (0,0)
-
-    target_x = cell.x + dx;
-    target_y = cell.y + dy;
-
-    target = simulation.getShipAt(target_x, target_y);
-
-    // Prevent friendly fire and keeps shooting in bounds
-    if (!simulation.inBounds(target_x, target_y) || (target != nullptr && target->getTeam() == team))
+    } while (abs(dx) + abs(dy) > 5 || (dx == 0 && dy == 0)); // avoid self targeting and limit to city block distance of 5
+    int target_x = cell.x + dx;
+    int target_y = cell.y + dy;
+    Ship *target = simulation.getShipAt(target_x, target_y);
+    if (target != nullptr)
     {
-        // shooting action
-        if (target != nullptr)
-        {
-            std::cout << name << " shot at (" << target_x << "," << target_y
-                      << ") and destroyed " << target->getName() << "!\n";
+        if (target->getTeam() != team)
+        {   
+            std::cout << name << ' ' << team << cell.symbol << " at (" << cell.x << ", " << cell.y << ") shot at (" << target_x << ", " << target_y << ") and hit " << target->getTeam() << ' ' << target->getSymbol() << "!\n";
+            simulation.loggingFile << name << ' ' << team << cell.symbol << " at (" << cell.x << ", " << cell.y << ") shot at (" << target_x << ", " << target_y << ") and hit " << target->getTeam() << ' ' << target->getSymbol() << "!\n";
+            simulation.setCell(target_x, target_y, '0');
             target->die();
             recordKill();
         }
         else
         {
-            std::cout << name << " shot at (" << target_x << "," << target_y
-                      << ") and missed!\n";
+            std::cout << name << " at (" << cell.x << ", " << cell.y << ") fires at (" << target_x << ", " << target_y << ") and misses.\n";
+            simulation.loggingFile << name << " at (" << cell.x << ", " << cell.y << ") fires at (" << target_x << ", " << target_y << ") and misses.\n";
         }
     }
-}
-// ------------- Destroyer -------------
-
-void Destroyer::action()
-{
-    std::cout << "-------------------- DESTROYER -------------------- \n";
-    std::cout << name << ' ' << team << cell.symbol << " at (" << cell.x << ", " << cell.y << ") started its turn.\n";
-    look();
-    std::this_thread::sleep_for(std::chrono::milliseconds(200));
-    moveorram();
-    std::this_thread::sleep_for(std::chrono::milliseconds(200));
-    simulation.display();
-    std::this_thread::sleep_for(std::chrono::milliseconds(200));
-    shoot();
-    std::this_thread::sleep_for(std::chrono::milliseconds(200));
-    shoot();
-    std::this_thread::sleep_for(std::chrono::milliseconds(200));
-}
-
-void Destroyer::look()
-{
-    // Implement a 3×3 scan around (x, y)
-    std::cout << name << ' ' << team << cell.symbol << " at (" << cell.x << ", " << cell.y << ") is scanning its surroundings.\n";
-    int index = 0;
-    for (int y = -1; y <= 1; y++)
+    else
     {
-        for (int x = -1; x <= 1; x++)
-        {
-            int nx = cell.x + x;
-            int ny = cell.y + y;
-            if (ny == cell.y && nx == cell.x)
-                continue;
-            if (simulation.inBounds(nx, ny))
-            {
-                neighbouring[index] = {simulation.getCell(nx, ny), nx, ny};
-                std::cout << "[ " << simulation.getCell(nx, ny) << " at (" << nx << ", " << ny << ") ] ";
-            }
-            index++;
-        }
-    }
-    std::cout << std::endl;
-}
-
-void Destroyer::move()
-{
-    int freeIndices[8];
-    int freeCount = 0;
-
-    for (int i = 0; i < 8; i++)
-    {
-        if (neighbouring[i].symbol == '0')
-        {
-            freeIndices[freeCount] = i;
-            freeCount++;
-        }
-    }
-
-    if (freeCount == 0) // No free spaces, avoid infinite loop
-    {
-        std::cout << name << " cannot move.\n";
-        return;
-    }
-
-    int index = freeIndices[rand() % freeCount];
-
-    std::cout << name << " is moving to (" << neighbouring[index].x << ", " << neighbouring[index].y << ").\n";
-    simulation.setCell(cell.x, cell.y, '0');
-    setPosition(neighbouring[index].x, neighbouring[index].y);
-    simulation.setCell(cell.x, cell.y, cell.symbol);
-}
-
-void Destroyer::ram()
-{
-    int index = 0;
-    Ship *target = nullptr;
-
-    while (index < 8)
-    {
-        target = simulation.getShipAt(neighbouring[index].x, neighbouring[index].y);
-
-        if (target == nullptr || target->getTeam() == team)
-        {
-            index++;
-            continue;
-        }
-
-        std::cout << name << " RAMMED and DESTROYED " << target->getName()
-                  << " at (" << neighbouring[index].x << ", " << neighbouring[index].y << ")!\n";
-
-        target->die();
-        recordKill();
-
-        // Move into the ramming position
-        simulation.setCell(cell.x, cell.y, '0'); // Clear old position
-        setPosition(neighbouring[index].x, neighbouring[index].y);
-        simulation.setCell(cell.x, cell.y, cell.symbol);
-
-        return;
-    }
-}
-
-void Destroyer::moveorram()
-{
-    for (int i = 0; i < 8; i++)
-    {
-        Ship *target = simulation.getShipAt(neighbouring[i].x, neighbouring[i].y);
-        if (target != nullptr && target->getTeam() != team)
-        {
-            ram();
-            return;
-        }
-    }
-    move();
-}
-
-void Destroyer::shoot()
-{
-    int dx, dy, target_x, target_y;
-    Ship *target = nullptr;
-
-    do
-    {
-        dx = (rand() % 11) - 5; // -5 to 5
-        dy = (rand() % 11) - 5;
-    } while (abs(dx) + abs(dy) > 5 && (dx == 0 && dy == 0));
-    // Prevent shooting at (0,0)
-
-    target_x = cell.x + dx;
-    target_y = cell.y + dy;
-
-    target = simulation.getShipAt(target_x, target_y);
-
-    // Prevent friendly fire and keeps shooting in bounds
-    if (!simulation.inBounds(target_x, target_y) || (target != nullptr && target->getTeam() == team))
-    {
-        // shooting action
-        if (target != nullptr)
-        {
-            std::cout << name << " shot at (" << target_x << "," << target_y
-                      << ") and destroyed " << target->getName() << "!\n";
-            target->die();
-            recordKill();
-        }
-        else
-        {
-            std::cout << name << " shot at (" << target_x << "," << target_y
-                      << ") and missed!\n";
-        }
+        std::cout << name << " at (" << cell.x << ", " << cell.y << ") fires at (" << target_x << ", " << target_y << ") and misses.\n";
+        simulation.loggingFile << name << " at (" << cell.x << ", " << cell.y << ") fires at (" << target_x << ", " << target_y << ") and misses.\n";
     }
 }
 // ------------- SuperShip -------------
 void SuperShip::action()
 {
-    std::cout << "-------------------- SUPERSHIP -------------------- \n";
+    std::cout << "-------------------- SUPERSHIP -------------------- \n\n";
+    simulation.loggingFile << "-------------------- SUPERSHIP -------------------- \n\n";
     std::cout << name << ' ' << team << cell.symbol << " at (" << cell.x << ", " << cell.y << ") started its turn.\n";
+    simulation.loggingFile << name << ' ' << team << cell.symbol << " at (" << cell.x << ", " << cell.y << ") started its turn.\n";
     look();
-    std::this_thread::sleep_for(std::chrono::milliseconds(200));
     moveorram();
-    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    shoot();
+    shoot();
+    shoot();
     simulation.display();
-    std::this_thread::sleep_for(std::chrono::milliseconds(200));
-    shoot();
-    std::this_thread::sleep_for(std::chrono::milliseconds(200));
-    shoot();
-    std::this_thread::sleep_for(std::chrono::milliseconds(200));
-    shoot();
-    std::this_thread::sleep_for(std::chrono::milliseconds(200));
 }
 
 void SuperShip::look()
 {
     // Implement a 3×3 scan around (x, y)
     std::cout << name << ' ' << team << cell.symbol << " at (" << cell.x << ", " << cell.y << ") is scanning its surroundings.\n";
+    simulation.loggingFile << name << ' ' << team << cell.symbol << " at (" << cell.x << ", " << cell.y << ") is scanning its surroundings.\n";
     int index = 0;
     for (int y = -1; y <= 1; y++)
     {
@@ -697,10 +712,8 @@ void SuperShip::look()
             if (simulation.inBounds(nx, ny))
             {
                 neighbouring[index] = {simulation.getCell(nx, ny), nx, ny};
-                std::cout << "[ " << simulation.getCell(nx, ny) << " at (" << nx << ", " << ny << ") ] ";
             }
-            else
-                index++;
+            index++;
         }
     }
     std::cout << std::endl;
@@ -708,157 +721,102 @@ void SuperShip::look()
 
 void SuperShip::move()
 {
-    int freeIndices[8];
-    int freeCount = 0;
-
-    for (int i = 0; i < 8; i++)
+    int directionsIndex[] = {1, 3, 4, 6}; // up, left, right, down
+    int index;
+    bool free = false;
+    for (int i : directionsIndex)
     {
         if (neighbouring[i].symbol == '0')
         {
-            freeIndices[freeCount] = i;
-            freeCount++;
+            free = true;
+            break;
         }
     }
-
-    if (freeCount == 0) // No free spaces, avoid infinite loop
+    if (!free)
     {
-        std::cout << name << " cannot move.\n";
+        std::cout << name << ' ' << team << cell.symbol << " at (" << cell.x << ", " << cell.y << ") cannot move.\n";
+        simulation.loggingFile << name << ' ' << team << cell.symbol << " at (" << cell.x << ", " << cell.y << ") cannot move.\n";
         return;
     }
+    // loop until valid move position found
+    do
+    {
+        index = directionsIndex[rand() % 4];
+    } while (neighbouring[index].symbol != '0');
 
-    int index = freeIndices[rand() % freeCount];
-
-    std::cout << name << " is moving to (" << neighbouring[index].x << ", " << neighbouring[index].y << ").\n";
     simulation.setCell(cell.x, cell.y, '0');
     setPosition(neighbouring[index].x, neighbouring[index].y);
     simulation.setCell(cell.x, cell.y, cell.symbol);
+    std::cout << name << ' ' << team << cell.symbol << " moved to (" << cell.x << ", " << cell.y << ").\n";
+    simulation.loggingFile << name << ' ' << team << cell.symbol << " moved to (" << cell.x << ", " << cell.y << ").\n";
 }
 
 void SuperShip::ram()
 {
-    int index = 0;
-    Ship *target = nullptr;
-
-    while (index < 8)
+    Ship *target = enemyShips.getRandom();
+    if (target == nullptr)
     {
-        target = simulation.getShipAt(neighbouring[index].x, neighbouring[index].y);
-
-        if (target == nullptr || target->getTeam() == team)
-        {
-            index++;
-            continue;
-        }
-
-        std::cout << name << " RAMMED and DESTROYED " << target->getName()
-                  << " at (" << neighbouring[index].x << ", " << neighbouring[index].y << ")!\n";
-
-        target->die();
-        recordKill();
-
-        // Move into the ramming position
-        simulation.setCell(cell.x, cell.y, '0'); // Clear old position
-        setPosition(neighbouring[index].x, neighbouring[index].y);
-        simulation.setCell(cell.x, cell.y, cell.symbol);
-
+        std::cout << "SuperShip returned null target\n";
         return;
     }
+    std::cout << name << ' ' << team << cell.symbol << " at (" << cell.x << ", " << cell.y << ") is ramming enemy at (" << target->getX() << ", " << target->getY() << ").\n";
+    simulation.loggingFile << name << ' ' << team << cell.symbol << " at (" << cell.x << ", " << cell.y << ") is ramming enemy at (" << target->getX() << ", " << target->getY() << ").\n";
+    simulation.setCell(cell.x, cell.y, '0');
+    setPosition(target->getX(), target->getY());
+    simulation.setCell(cell.x, cell.y, cell.symbol);
+    if (target)
+    {
+        target->die();
+        recordKill();
+    }
+        
+    std::cout << name << ' ' << team << cell.symbol << " moved to (" << cell.x << ", " << cell.y << ").\n";
+    simulation.loggingFile << name << ' ' << team << cell.symbol << " moved to (" << cell.x << ", " << cell.y << ").\n";
 }
 
 void SuperShip::moveorram()
 {
-    for (int i = 0; i < 8; i++)
+    if (enemyShips.empty())
     {
-        Ship *target = simulation.getShipAt(neighbouring[i].x, neighbouring[i].y);
-        if (target != nullptr && target->getTeam() != team)
-        {
-            ram();
-            return;
-        }
+        std::cout << name << ' ' << team << cell.symbol << " at (" << cell.x << ", " << cell.y << ") cannot ram.\n";
+        move();
+        return;
     }
-    move();
+    ram();
 }
 
 void SuperShip::shoot()
-{
-    int dx, dy, target_x, target_y;
-    Ship *target = nullptr;
-
+{  
+    int target_x, target_y;
     do
     {
-        dx = (rand() % 11) - 5; // -5 to 5
-        dy = (rand() % 11) - 5;
-    } while (abs(dx) + abs(dy) > 5 && (dx == 0 && dy == 0));
-    // Prevent shooting at (0,0)
-
-    target_x = cell.x + dx;
-    target_y = cell.y + dy;
-
+        target_x = rand() % simulation.getWidth();
+        target_y = rand() % simulation.getHeight(); 
+    } while (target_x == cell.x && target_y == cell.y);
+    Ship *target = nullptr;
     target = simulation.getShipAt(target_x, target_y);
 
-    // Prevent friendly fire and keeps shooting in bounds
-    if (!simulation.inBounds(target_x, target_y) || (target != nullptr && target->getTeam() == team))
+    if (target != nullptr)
     {
-        // shooting action
-        if (target != nullptr)
+        if (target->getTeam() != team)
         {
             std::cout << name << " shot at (" << target_x << "," << target_y
                       << ") and destroyed " << target->getName() << "!\n";
+            simulation.loggingFile << name << " shot at (" << target_x << "," << target_y
+                      << ") and destroyed " << target->getName() << "!\n";
+            simulation.setCell(target_x, target_y, '0');
             target->die();
             recordKill();
         }
         else
         {
-            std::cout << name << " shot at (" << target_x << "," << target_y
-                      << ") and missed!\n";
+            std::cout << name << " at (" << cell.x << ", " << cell.y << ") fires at (" << target_x << ", " << target_y << ") and misses.\n";
+            simulation.loggingFile << name << " at (" << cell.x << ", " << cell.y << ") fires at (" << target_x << ", " << target_y << ") and misses.\n";
         }
     }
+    else
+    {
+        std::cout << name << ' ' << team << " at (" << cell.x << ", " << cell.y << ") fires at (" << target_x << ", " << target_y << ") and misses.\n";
+        simulation.loggingFile << name << ' ' << team << " at (" << cell.x << ", " << cell.y << ") fires at (" << target_x << ", " << target_y << ") and misses.\n";
+    }
 }
-
-// ------------- Terrorist -------------
-
-// void Terrorist::action()
-// {
-//     std::cout << "Terrorist " << name << " started its turn!\n";
-//     std::this_thread::sleep_for(std::chrono::milliseconds(500));
-//     move();
-//     std::this_thread::sleep_for(std::chrono::milliseconds(500));
-//     mine();
-//     std::this_thread::sleep_for(std::chrono::milliseconds(500));
-// }
-
-// void Terrorist::move()
-// {
-//     std::cout << "Terrorist " << name << " moves to a random position.\n";
-//     int oly = x, oly = y;
-//     int direction = rand() % 4;
-//     switch (direction)
-//     {
-//     case 0:
-//         x++;
-//         break;
-//     case 1:
-//         x--;
-//         break;
-//     case 2:
-//         y++;
-//         break;
-//     case 3:
-//         y--;
-//         break;
-//     }
-//     if (!simulation.canMoveTo(x, y, false))
-//     {
-//         x = oly;
-//         y = oly;
-//     }
-//     else
-//     {
-//         simulation.updateBattlefieldPosition(this, oly, oly);
-//     }
-// }
-
-// void Terrorist::mine()
-// {
-//     std::cout << "Terrorist " << name << " places a mine on the battlefield (not fully implemented).\n";
-//     // You could add logic if a ship steps here, it blows up, etc.
-// }

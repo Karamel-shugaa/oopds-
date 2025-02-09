@@ -1,24 +1,27 @@
 #ifndef RESPAWNQUEUE_H
 #define RESPAWNQUEUE_H
 
-class Ship; // Forward declare
+#include "Ship.h"
+#include <memory>
 
 class RespawnQueue {
-private:
+private:    
     struct Node {
-        Ship *ship;
-        Node *next;
-        Node(Ship *s) : ship(s), next(nullptr) {}
+        std::unique_ptr<Ship> ship;
+        std::unique_ptr<Node> next;
+        Node(std::unique_ptr<Ship> s) : ship(std::move(s)), next(nullptr) {}
     };
-    Node *front;
-    Node *rear;
+    // use unique_ptr here to auto delete nodes :) (DOESN'T HAVE TO DO WITH SHIP)
+    std::unique_ptr<Node> head;
+    Node *tail;
 
 public:
-    RespawnQueue() : front(nullptr), rear(nullptr) {}
-    ~RespawnQueue();  // Destructor to free memory
-    void enqueue(Ship *ship);
-    Ship *dequeue();
+    RespawnQueue() : head(nullptr), tail(nullptr) {}
+    void enqueue(std::unique_ptr<Ship> ship);
+    std::unique_ptr<Ship> dequeue();
+    void display();
     bool isEmpty();
 };
 
-#endif // RESPAWNQUEUE_H
+#endif 
+// RESPAWNQUEUE_H

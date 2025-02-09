@@ -2,6 +2,8 @@
 #define SHIP_H
 
 #include <string>
+#include "TempList.h"
+#include <iostream>
 
 // Forward declare Simulation to avoid circular includes here
 class Simulation;
@@ -15,16 +17,31 @@ protected:
         char symbol;
         int x, y;
     };
+    char islandOrSea = '0';
     Cell cell;
     int lives;
     int kills;
     char team;
     std::string name;
-    Cell neighbouring[8]{};
+    Cell neighbouring[8]{{'X', -1, -1}};
     Simulation &simulation;
 
 public:
     Ship(Simulation &simulation) : simulation(simulation), lives(3), kills(0) {};
+    Ship(const Ship &other) : simulation(other.simulation)
+    {
+        std::cout << "Ship copy constructor called\n";
+        islandOrSea = other.islandOrSea;
+        cell = other.cell;
+        lives = other.lives;
+        kills = 0; // restart kill count
+        team = other.team;
+        name = other.name;
+        for (int i = 0; i < 8; i++)
+        {
+            neighbouring[i] = other.neighbouring[i];
+        }
+    }
     virtual ~Ship() {}
     // use Ship(x, y) to set position
     void operator()(int x, int y) { setPosition(x, y); }
@@ -49,6 +66,7 @@ class MovingShip : virtual public Ship
 {
 public:
     MovingShip(Simulation &simulation) : Ship(simulation) {}
+    MovingShip(const MovingShip &other) : Ship(other) {}
     virtual void move() = 0;
     virtual ~MovingShip() {}
 };
@@ -57,6 +75,7 @@ class SeeingShip : virtual public Ship
 {
 public:
     SeeingShip(Simulation &simulation) : Ship(simulation) {}
+    SeeingShip(const SeeingShip &other) : Ship(other) {}
     virtual void look() = 0;
     virtual ~SeeingShip() {}
 };
@@ -65,6 +84,7 @@ class ShootingShip : virtual public Ship
 {
 public:
     ShootingShip(Simulation &simulation) : Ship(simulation) {}
+    ShootingShip(const ShootingShip &other) : Ship(other) {}
     virtual void shoot() = 0;
     virtual ~ShootingShip() {}
 };
@@ -73,18 +93,10 @@ class RamingShip : virtual public Ship
 {
 public:
     RamingShip(Simulation &simulation) : Ship(simulation) {}
+    RamingShip(const RamingShip &other) : Ship(other) {}
     virtual void ram() = 0;
     virtual ~RamingShip() {}
 };
-
-class MiningShip : virtual public Ship
-{
-public:
-    MiningShip(Simulation &simulation) : Ship(simulation) {}
-    virtual void mine() = 0;
-    virtual ~MiningShip() {}
-};
-
 // -----------------------------------------------------------------------------
 // Derived classes
 // -----------------------------------------------------------------------------
@@ -102,6 +114,7 @@ public:
 class Cruiser : public MovingShip, public SeeingShip, public RamingShip
 {
 public:
+    TempList enemyShips;
     Cruiser(Simulation &simulation) : Ship(simulation), MovingShip(simulation), SeeingShip(simulation), RamingShip(simulation) {};
     void action() override;
     void look () override;
@@ -110,27 +123,21 @@ public:
     void ram() override;
 };
 
-class Frigate : public ShootingShip
-{
-private:
-    int targetx;
-    int targety;
-    // We add a direction index to cycle through 8 directions
-    int directionIndex = 0;
-
-public:
-    Frigate(Simulation &simulation) : Ship(simulation), ShootingShip(simulation) {};
-    void action() override;
-    void shoot() override;
-    int getTargetX() const;
-    int getTargetY() const;
-    void nextTarget();
-};
-
 class Destroyer : public MovingShip, public SeeingShip, public ShootingShip, public RamingShip
 {
 public:
+    TempList enemyShips;
     Destroyer(Simulation &simulation) : Ship(simulation), MovingShip(simulation), SeeingShip(simulation), ShootingShip(simulation), RamingShip(simulation) {};
+    Destroyer(const BattleShip &battleship) : Ship(battleship), MovingShip(battleship), SeeingShip(battleship), ShootingShip(battleship), RamingShip(*this) {}
+    Destroyer(Cruiser &cruiser) : Ship(cruiser), MovingShip(cruiser), SeeingShip(cruiser), ShootingShip(*this), RamingShip(cruiser) 
+    {
+        name = "Destroyer";
+        cell.symbol = 'D';
+        if (!cruiser.enemyShips.empty())
+        {
+            cruiser.enemyShips.clear();
+        }
+    }
     void action() override;
     void look () override;
     void move() override;
@@ -138,12 +145,33 @@ public:
     void ram() override;
     void shoot() override;
 };
+class Frigate : public ShootingShip
+{
+private:
+    int targetx;
+    int targety;
+    int directionIndex = 0;
 
-class Corvette : public ShootingShip
+public:
+    Frigate(Simulation &simulation) : Ship(simulation), ShootingShip(simulation) {};
+    void action() override;
+    void shoot() override;
+    void nextTarget();
+};
+
+
+class Corvette : public SeeingShip, public ShootingShip
 {
 public:
-    Corvette(Simulation &simulation) : Ship(simulation), ShootingShip(simulation) {};
+    Corvette(Simulation &simulation) : Ship(simulation),SeeingShip(simulation), ShootingShip(simulation) {};
+    Corvette(Frigate &frigate) : Ship(frigate), SeeingShip(*this), ShootingShip(frigate)
+    {
+        name = "Corvette";
+        cell.symbol = 'C';
+
+    }
     void action() override;
+    void look () override;
     void shoot() override;
 };
 
@@ -159,8 +187,24 @@ public:
 
 class SuperShip : public MovingShip, public SeeingShip, public ShootingShip, public RamingShip
 {
+private:
+    TempList enemyShips;
 public:
     SuperShip(Simulation &simulation) : Ship(simulation), MovingShip(simulation), SeeingShip(simulation), ShootingShip(simulation), RamingShip(simulation) {};
+    SuperShip(Destroyer &destroyer) : Ship(destroyer), MovingShip(destroyer), SeeingShip(destroyer), ShootingShip(destroyer), RamingShip(destroyer)
+    {
+        name = "Supership";
+        cell.symbol = 'S';
+        if (!destroyer.enemyShips.empty())
+        {
+            destroyer.enemyShips.clear();
+        }
+    }
+    SuperShip(Amphibious &amphibious) : Ship(amphibious), MovingShip(amphibious), SeeingShip(amphibious), ShootingShip(amphibious), RamingShip(*this)
+    {
+        name = "Supership";
+        cell.symbol = 'S';
+    }
     void action() override;
     void look () override;
     void move() override;
@@ -168,15 +212,6 @@ public:
     void ram() override;
     void shoot() override;
 };
-
-// class Terrorist : public MovingShip, public MiningShip
-// {
-// public:
-//     Terrorist(Simulation &simulation) : Ship(simulation), MovingShip(simulation), MiningShip(simulation) {};
-//     void action() override;
-//     void move() override;
-//     void mine() override;
-// };
 
 #endif 
 // SHIP_H

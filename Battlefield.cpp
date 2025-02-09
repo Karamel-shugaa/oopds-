@@ -14,12 +14,10 @@ Battlefield::Battlefield(std::string filename)
     }
     read_grid(file);
     file.close();
-    std::cout << "Battlefield created.\n";
 }
 
 Battlefield::~Battlefield()
 {
-    std::cout << "Battlefield destroyed.\n";
     for (int i = 0; i < height; i++)
     {
         delete[] grid[i];
@@ -100,21 +98,31 @@ void Battlefield::display()
     }
 }
 
-void Battlefield::placeShip(Ship *ship)
+bool Battlefield::placeShip(Ship *ship, bool respawn)
 {
     // give it a random position on grid where grid[x][y] == '0'
+    int tries = 300;
     int x = rand() % width;
     int y = rand() % height;
-    while (grid[y][x] != '0')
+    while (grid[y][x] != '0' && tries > 0)
     {
         std::cout << "Invalid position (" << x << ", " << y << ") for " << ship->getSymbol() << ". Retrying...\n";
-        std::cout << "Grid at x y:" << grid[y][x] << std::endl;
         x = rand() % width;
         y = rand() % height;
+        tries--;
+    }
+    if (tries == 0)
+    {
+        std::cout << "No position for " << ship->getName() << ' ' << ship->getTeam() << ship->getSymbol() << " on grid.\n";
+        return false;
     }
     ship->setPosition(x, y);
-    std::cout << "Placing " << ship->getSymbol() << " at (" << x << ", " << y << ")\n";
-    grid[y][x] = ship->getSymbol();
+    setCell(x, y, ship->getSymbol());
+    if (!respawn)
+        std::cout << "Placing " << ship->getSymbol() << " at (" << x << ", " << y << ")\n";
+    else
+        std::cout << ship->getName() << ' ' << ship->getTeam() << ship->getSymbol() << " respawned at (" << x << ", " << y << ").\n";
+    return true;
 }
 
 char Battlefield::getCell(int x, int y) const
@@ -126,14 +134,12 @@ char Battlefield::getCell(int x, int y) const
 
 void Battlefield::setCell(int x, int y, char val)
 {
-    std::cout << "Setting cell " << x << " " << y << " to " << val << std::endl;
-
     if (!inBounds(x, y))
     {
         std::cerr << "Error: setCell(" << x << ", " << y << ") out of bounds. Grid size: " << height << "x" << width << std::endl;
         return;
     }
-    grid[y][x] = val; 
+    grid[y][x] = val;
 }
 bool Battlefield::inBounds(int x, int y) const
 {

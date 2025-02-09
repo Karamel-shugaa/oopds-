@@ -2,39 +2,50 @@
 #include <iostream>
 #include "Ship.h"
 
-RespawnQueue::~RespawnQueue() {
-    while (!isEmpty()) {
-        dequeue();
+void RespawnQueue::enqueue(std::unique_ptr<Ship> ship)
+{
+    auto newNode = std::make_unique<Node>(std::move(ship));
+
+    if (head == nullptr) 
+    {
+        head = std::move(newNode);
+        tail = head.get();
+    }
+    else
+    {
+        tail->next = std::move(newNode);
+        tail = tail->next.get();
     }
 }
 
-void RespawnQueue::enqueue(Ship *ship) {
-    Node *newNode = new Node(ship);
-    if (!rear) {
-        front = rear = newNode;
-    } else {
-        rear->next = newNode;
-        rear = newNode;
-    }
-    std::cout << "Ship " << ship->getName() << " added to RespawnQueue.\n";  // Debugging
-}
-
-Ship *RespawnQueue::dequeue() {
-    if (!front) {
+std::unique_ptr<Ship> RespawnQueue::dequeue()
+{
+    if (head == nullptr)
+    {
         std::cout << "RespawnQueue is empty.\n";
         return nullptr;
     }
 
-    Node *temp = front;
-    Ship *ship = front->ship;
-    front = front->next;
-    if (!front) rear = nullptr;
+    std::unique_ptr<Ship> removedShip = std::move(head->ship); // transfer ownership
+    head = std::move(head->next); // next node becomes head
 
-    delete temp;
-    std::cout << "Ship " << ship->getName() << " removed from RespawnQueue for respawn.\n"; // Debugging
-    return ship;
+    if (head == nullptr)
+        tail = nullptr;
+    return removedShip;
 }
 
 bool RespawnQueue::isEmpty() {
-    return front == nullptr;
+    return head == nullptr;
+}
+
+void RespawnQueue::display()
+{
+    Node *current = head.get();
+    std::cout << "RespawnQueue: ";
+    while (current)
+    {
+        std::cout << current->ship->getName() << ' ' << current->ship->getTeam() << current->ship->getSymbol() << " -> ";
+        current = current->next.get();
+    }
+    std::cout << std::endl;
 }

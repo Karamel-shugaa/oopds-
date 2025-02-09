@@ -1,8 +1,6 @@
 #include "Simulation.h"
 #include "Ship.h"
 #include <fstream>
-#include <cstring>
-#include <cstdlib>
 #include <thread>
 #include <chrono>
 #include <sstream>
@@ -10,7 +8,12 @@
 
 Simulation::Simulation(std::string filename) : Battlefield(filename), shipCount(0)
 {
-    std::cout << "Simulation created.\n";
+    loggingFile.open("log.txt");
+    if (!loggingFile.is_open())
+    {
+        std::cerr << "Error: Could not open log file.\n";
+        exit(1);
+    }
     std::ifstream file(filename);
     if (!file.is_open())
     {
@@ -21,7 +24,6 @@ Simulation::Simulation(std::string filename) : Battlefield(filename), shipCount(
     // return to the start of the file
     file.seekg(0, std::ios::beg);
     read_teams_details(file);
-    std::cout << "\niterations: " << iterations << std::endl;
     file.close();
 }
 
@@ -30,14 +32,12 @@ Simulation::~Simulation()
 }
 void Simulation::read_iterations(std::ifstream &file)
 {
-    std::cout << "Reading iterations\n";
     std::string itemName;
     int itemNumber;
     std::string line;
     std::getline(file, line);
     std::istringstream string_stream(line);
     string_stream >> itemName >> iterations; // store the number of game turns from game.txt file
-    // ships = new Ship *[maxShips];
 }
 void Simulation::read_teams_details(std::ifstream &file)
 {
@@ -50,17 +50,16 @@ void Simulation::read_teams_details(std::ifstream &file)
     {
         string_stream.clear();
         string_stream.str(line);
-        std::cout << "Line: " << line << std::endl;
         // iterate until first team is found (line starting with "Team")
         if (line.find("Team") != std::string::npos)
         {
             // itemName to skip "Team" word
             string_stream >> itemName >> teamSymbol >> value;
-            std::cout << "Value: " << value << std::endl;
             break;
         }
     }
     // store the first team's details
+    std::cout << "-----------------First Team -------------------\n";
     {
         char shipSymbol;
         int num_of_lines = value;
@@ -68,7 +67,6 @@ void Simulation::read_teams_details(std::ifstream &file)
         {
             string_stream.clear();
             std::getline(file, line);
-            std::cout << "Line: " << line << std::endl;
             string_stream.str(line);
             string_stream >> itemName >> shipSymbol >> value;
             load_ship(itemName, shipSymbol, teamSymbol, value);
@@ -81,7 +79,6 @@ void Simulation::read_teams_details(std::ifstream &file)
         int num_of_lines = value;
         string_stream.clear();
         std::getline(file, line);
-        std::cout << "Line: " << line << std::endl;
         string_stream.str(line);
         if (line.find("Team") != std::string::npos)
         {
@@ -93,7 +90,6 @@ void Simulation::read_teams_details(std::ifstream &file)
         {
             string_stream.clear();
             std::getline(file, line);
-            std::cout << "Line: " << line << std::endl;
             string_stream.str(line);
             string_stream >> itemName >> shipSymbol >> value;
             load_ship(itemName, shipSymbol, teamSymbol, value);
@@ -116,7 +112,7 @@ std::unique_ptr<Ship> Simulation::createShip(const std::string &ship_name)
         return std::make_unique<Corvette>(*this);
     else if (ship_name == "Amphibious")
         return std::make_unique<Amphibious>(*this);
-    else if (ship_name == "SuperShip")
+    else if (ship_name == "Supership")
         return std::make_unique<SuperShip>(*this);
 
     std::cerr << "Error: Invalid ship type '" << ship_name << "'.\n";
@@ -143,15 +139,28 @@ void Simulation::load_ship(std::string &shipName, char &symbol, char &team, int 
         ship->setSymbol(symbol);
         ship->setTeam(team);
         ship->setName(shipName);
-        std::cout << "Ship " << shipName << " created.\n";
         addShip(std::move(ship));
     }
 }
 
 void Simulation::addShip(std::unique_ptr<Ship> ship)
 {
-    placeShip(ship.get());
-    activeShips.append(std::move(ship));
+    if (placeShip(ship.get()))
+        activeShips.append(std::move(ship));
+}
+
+void Simulation::addToQueue(Ship *ship)
+{
+    std::unique_ptr<Ship> removedShip = activeShips.remove(ship);
+    if (removedShip != nullptr)
+    {
+        respawnQueue.enqueue(std::move(removedShip));
+        std::cout << ship->getName() << ' ' << ship->getTeam() << ship->getSymbol() << " added to RespawnQueue.\n";
+    }
+    else
+    {
+        std::cerr << "addToQueue(): Ship not found in activeShips.\n";
+    }
 }
 
 // added by the hard carry yousef
@@ -159,8 +168,8 @@ void Simulation::respawnShips()
 {
     for (int i = 0; i < 2 && !respawnQueue.isEmpty(); i++)
     {
-        Ship *ship = respawnQueue.dequeue();
-        if (!ship)
+        std::unique_ptr<Ship> ship = respawnQueue.dequeue();
+        if (!ship) // no ships in queue
             break;
 
         // Ensure it hasn't exceeded respawns
@@ -169,26 +178,10 @@ void Simulation::respawnShips()
             std::cout << ship->getName() << " has no respawns left.\n";
             continue;
         }
-
-        // Find a new random position
-        int tries = 0;
-        while (tries < 100)
-        {
-            int x = rand() % getWidth();
-            int y = rand() % getHeight();
-
-            if (getCell(x, y) == '0')
-            { // Check if the spot is empty
-                ship->setPosition(x, y);
-                setCell(x, y, ship->getSymbol());
-                addShip(std::unique_ptr<Ship>(ship)); // Re-add ship to active ships
-                std::cout << "Ship " << ship->getSymbol() << " respawned at (" << x << ", " << y << ").\n";
-                break;
-            }
-            tries++;
-        }
+        addShip(std::move(ship));
     }
 }
+
 void Simulation::checkVictoryCondition(int currentTurn)
 {
     bool teamA_alive = false;
@@ -210,7 +203,6 @@ void Simulation::checkVictoryCondition(int currentTurn)
             return; // Both teams still have ships, continue the game
     }
 
-    // Ensure a winner is printed before stopping the game
     if (!teamA_alive && teamB_alive)
     {
         std::cout << "Team B wins! All Team A ships have been destroyed.\n";
@@ -219,12 +211,7 @@ void Simulation::checkVictoryCondition(int currentTurn)
     {
         std::cout << "Team A wins! All Team B ships have been destroyed.\n";
     }
-    else if (currentTurn == iterations - 1) // Last turn & both teams exist
-    {
-        std::cout << "Sudden Death! No team won.\n";
-    }
-
-    gameOver = true; // Set this AFTER printing to ensure the message is shown
+    gameOver = true;
 }
 void Simulation::run()
 {
@@ -232,71 +219,37 @@ void Simulation::run()
     {
         if (gameOver)
         {
-            std::cout << "\nGAME OVER\n";
+            "\n------------------------GAME OVER--------------------------\n\n Final Battlefield: \n\n";
+            display();
             return;
         }
-        std::cout << "-------------------- TURN " << i + 1 << " -------------------- \n";
-
+        std::cout << "\n-------------------- TURN " << i + 1 << " -------------------- \n\n";
+        respawnQueue.display();
         display();
-
+        loggingFile << "\n-------------------- TURN " << i + 1 << " -------------------- \n\n";
+        displayLog();
         ShipList::Iterator it = activeShips.begin();
         while (it != activeShips.end())
         {
             Ship *s = *it;
             ++it;
+            if (!s)
+                continue;
             s->action();
+            // std::cin.get();
+            loggingFile << std::endl;
+            std::cout << std::endl;
         }
-
         respawnShips();
         checkVictoryCondition(i); // Check if a team has won
     }
-
-    std::cout << "\nGAME OVER\n"; // If the game reached the last turn, ensure this prints
+    std::cout << "\n\n------------------------GAME FINISHED WITH NO WINNING TEAM------------------------\n\n-------------------------------------GAME OVER------------------------------------ \n\nFinal Battlefield: \n\n";
     display();
 }
 
-// void Simulation::run(int iters)
-// {
-//     if (iters > 0)
-//         iterations = iters;
-
-//     for (int i = 0; i < iterations; i++)
-//     {
-//         if (gameOver)
-//             break;
-//         std::cout << "\nTurn " << i + 1 << ":\n";
-//         battlefield.display();
-
-//         // Let each ship take a turn
-//         ShipList::Iterator it = activeShips.begin();
-//         while (it != activeShips.end())
-//         {
-//             Ship *s = *it;
-//             ++it;
-//             if (!s->getDeathFlag() && s->getLives() > 0)
-//             {
-//                 s->turn();
-//             }
-//             // If destroyed this turn
-//             if (s->getDeathFlag())
-//             {
-//                 respawnQueue.enqueue(s);
-//                 activeShips.removeShip(s);
-//             }
-//         }
-
-//         respawnShips();
-//         checkVictoryCondition();
-//         if (gameOver)
-//             break;
-
-//         std::this_thread::sleep_for(std::chrono::milliseconds(500));
-//     }
-// }
-
 Ship *Simulation::getShipAt(int x, int y)
 {
-    // We'll iterate the activeShips list to see if any ship is at (x,y)
+    // iterate the activeShips list to see if any ship is at (x,y)
     ShipList::Iterator it = activeShips.begin();
     while (it != activeShips.end())
     {
@@ -312,129 +265,197 @@ Ship *Simulation::getShipAt(int x, int y)
 
 void Simulation::removeShip(Ship *s)
 {
+    if (s == nullptr)
+    {
+        std::cerr << "removeShip(): Ship is null.\n";
+        return;
+    }
     activeShips.remove(s);
 }
-// bool Simulation::canMoveTo(int x, int y, bool canOccupyEnemy, bool amphibious)
-// {
-//     if (!inBounds(x, y))
-//         return false;
-//     // If amphibious => use isCellValidForAmphibious, else normal
-//     if (amphibious)
-//     {
-//         if (!battlefield.isCellValidForAmphibious(x, y))
-//             return false;
-//     }
-//     else
-//     {
-//         if (!battlefield.isCellValid(x, y))
-//         {
-//             // If it’s not valid due to occupant or island
-//             // we only allow occupant if canOccupyEnemy==true
-//             if (!inBounds(x, y))
-//                 return false; // not needed, but safe
-//             if (getOccupantAt(x, y) && canOccupyEnemy)
-//                 return true;
-//             return false;
-//         }
-//     }
-//     return true;
-// }
 
-// void Simulation::updateBattlefieldPosition(Ship *ship, int oldX, int oldY)
-// {
-//     battlefield.moveShip(ship, oldX, oldY);
-// }
+void Simulation::battleshipToDestroyer(Ship *ship)
+{
+    BattleShip *battleship = dynamic_cast<BattleShip *>(ship);
+    if (!battleship)
+    {
+        std::cerr << "Error: Ship is not a battleship, cannot upgrade to Destroyer!\n";
+        return;
+    }
 
-// void Simulation::upgradeShip(Ship *oldShip, const std::string &newType)
-// {
-//     // remove old from active list (but do not delete yet)
-//     activeShips.remove(oldShip);
+    std::cout << "Upgrading " << battleship->getName() << ' ' << battleship->getTeam() << battleship->getSymbol() <<
+    " at (" << battleship->getX() << ", " << battleship->getY() << ") to Destroyer...\n";
 
-//     // Create new object of newType at same coords, same kills
-//     int oldX = oldShip->getX();
-//     int oldY = oldShip->getY();
-//     int oldLives = oldShip->getLives();
-//     int oldKills = oldShip->getKills();
-//     int oldRespawns = oldShip->getRespawnCount();
-//     std::string oldName = oldShip->getTeam() + "Upgraded"; // or keep oldShip->name
-//     char oldSym = oldShip->getSymbol();                    // might change
-//     std::string oldTeam = oldShip->getTeam();
+    for (auto it = activeShips.begin(); it != activeShips.end(); ++it)
+    {
+        if (*it == ship)
+        { 
 
-//     // We'll delete old ship after we create the new one
-//     // Because we must keep the simulation reference
-//     Ship *newShip = nullptr;
+            // move ownership out of the list temporarily (using reference to unique_ptr because can't create another unique-ptr to same obj)
+            std::unique_ptr<Ship> &shipPtr = activeShips.getUniquePtr(it);
+            std::unique_ptr<Ship> oldShip = std::move(shipPtr);
 
-//     if (newType == "Destroyer")
-//     {
-//         newShip = new Destroyer(*this, oldName, oldSym, oldX, oldY, oldLives, oldTeam);
-//     }
-//     else if (newType == "SuperShip")
-//     {
-//         newShip = new SuperShip(*this, oldName, oldSym, oldX, oldY, oldLives, oldTeam);
-//     }
-//     else if (newType == "Corvette")
-//     {
-//         newShip = new Corvette(*this, oldName, oldSym, oldX, oldY, oldLives, oldTeam);
-//     }
-//     else
-//     {
-//         // fallback: new Ship is same type
-//         newShip = oldShip;
-//         std::cout << "No recognized upgrade type. Aborting upgrade.\n";
-//         return;
-//     }
+            // create a new Destroyer using the old battleship data
+            std::unique_ptr<Destroyer> newShip = std::make_unique<Destroyer>(*battleship);
 
-//     // copy kills & respawnCount
-//     for (int i = 0; i < oldKills; i++)
-//         newShip->recordKills();
-//     for (int i = 0; i < oldRespawns; i++)
-//         newShip->incrementRespawnCount();
+            // replace old ship in the same position (preserves order)
+            shipPtr = std::move(newShip);
 
-//     // place newShip in the battlefield
-//     battlefield.placeShip(newShip);
-//     activeShips.addShip(newShip);
+            std::cout << "Upgrade complete: battleship is now a Destroyer!\n";
+            return;
+        }
+    }
 
-//     // now safe to "destroy" oldShip
-//     delete oldShip;
-// }
+    std::cerr << "Error: battleship not found in activeShips!\n";
+}
+void Simulation::cruiserToDestroyer(Ship *ship)
+{
+    Cruiser *cruiser = dynamic_cast<Cruiser *>(ship);
+    if (!cruiser)
+    {
+        std::cerr << "Error: Ship is not a cruiser, cannot upgrade to Destroyer!\n";
+        return;
+    }
 
-// bool Simulation::canRespawn(Ship *s)
-// {
-//     // if s->getRespawnCount() < 3, we can
-//     return (s->getRespawnCount() < 3);
-// }
+    std::cout << "Upgrading " << cruiser->getName() << ' ' << cruiser->getTeam() << cruiser->getSymbol() << " at (" << cruiser->getX() << ", " << cruiser->getY() << ") to Destroyer...\n";
 
-// void Simulation::checkVictoryCondition()
-// {
-//     // Count living ships per team
-//     int teamACount = 0;
-//     int teamBCount = 0;
-//     ShipList::Iterator it = activeShips.begin();
-//     while (it != activeShips.end())
-//     {
-//         Ship *s = *it;
-//         ++it;
-//         if (s->getLives() > 0)
-//         {
-//             if (s->getTeam() == "A")
-//                 teamACount++;
-//             else if (s->getTeam() == "B")
-//                 teamBCount++;
-//         }
-//     }
-//     if (teamACount == 0 && teamBCount == 0)
-//     {
-//         std::cout << "All ships destroyed! It's a tie?!\n";
-//         gameOver = true;
-//     }
-//     else if (teamACount == 0)
-//     {
-//         std::cout << "Team B wins!\n";
-//         gameOver = true;
-//     }
-//     else if (teamBCount == 0)
-//     {
-//         std::cout << "Team A wins!\n";
-//         gameOver = true;
-//     }
-// }
+    for (auto it = activeShips.begin(); it != activeShips.end(); ++it)
+    {
+        if (*it == ship)
+        {
+
+            // move ownership out of the list temporarily (using reference to unique_ptr because can't create another unique-ptr to same obj)
+            std::unique_ptr<Ship> &shipPtr = activeShips.getUniquePtr(it);
+            std::unique_ptr<Ship> oldShip = std::move(shipPtr);
+
+            // create a new Destroyer using the old cruiser data
+            std::unique_ptr<Destroyer> newShip = std::make_unique<Destroyer>(*cruiser);
+
+            // replace old ship in the same position (preserves order)
+            shipPtr = std::move(newShip);
+
+            std::cout << "Upgrade complete: cruiser is now a Destroyer!\n";
+            return;
+        }
+    }
+
+    std::cerr << "Error: cruiser not found in activeShips!\n";
+}
+void Simulation::destroyerToSupership(Ship *ship)
+{
+    Destroyer *destroyer = dynamic_cast<Destroyer *>(ship);
+    if (!destroyer)
+    {
+        std::cerr << "Error: Ship is not a destroyer, cannot upgrade to Supership!\n";
+        return;
+    }
+
+    std::cout << "Upgrading " << destroyer->getName() << ' ' << destroyer->getTeam() << destroyer->getSymbol() << " at (" << destroyer->getX() << ", " << destroyer->getY() << ") to Supership...\n";
+
+    for (auto it = activeShips.begin(); it != activeShips.end(); ++it)
+    {
+        if (*it == ship)
+        {
+
+            // move ownership out of the list temporarily (using reference to unique_ptr because can't create another unique-ptr to same obj)
+            std::unique_ptr<Ship> &shipPtr = activeShips.getUniquePtr(it);
+            std::unique_ptr<Ship> oldShip = std::move(shipPtr);
+
+            // create a new SuperShip using the old destroyer data
+            std::unique_ptr<SuperShip> newShip = std::make_unique<SuperShip>(*destroyer);
+
+            // replace old ship in the same position (preserves order)
+            shipPtr = std::move(newShip);
+
+            std::cout << "Upgrade complete: destroyer is now a Supership!\n";
+            return;
+        }
+    }
+
+    std::cerr << "Error: destroyer not found in activeShips!\n";
+}
+void Simulation::frigateToCorvette(Ship *ship)
+{
+    Frigate *frigate = dynamic_cast<Frigate *>(ship);
+    if (!frigate)
+    {
+        std::cerr << "Error: Ship is not a frigate, cannot upgrade to Supership!\n";
+        return;
+    }
+
+    std::cout << "Upgrading " << frigate->getName() << ' ' << frigate->getTeam() << frigate->getSymbol() << " at (" << frigate->getX() << ", " << frigate->getY() << ") to Corvette...\n";
+
+    for (auto it = activeShips.begin(); it != activeShips.end(); ++it)
+    {
+        if (*it == ship)
+        {
+
+            // move ownership out of the list temporarily (using reference to unique_ptr because can't create another unique-ptr to same obj)
+            std::unique_ptr<Ship> &shipPtr = activeShips.getUniquePtr(it);
+            std::unique_ptr<Ship> oldShip = std::move(shipPtr);
+
+            // create a new Corvette using the old frigate data
+            std::unique_ptr<Corvette> newShip = std::make_unique<Corvette>(*frigate);
+
+            // replace old ship in the same position (preserves order)
+            shipPtr = std::move(newShip);
+
+            std::cout << "Upgrade complete: frigate is now a Corvette!\n";
+            return;
+        }
+    }
+
+    std::cerr << "Error: frigate not found in activeShips!\n";
+}
+
+void Simulation::amphibiousToSupership(Ship *ship)
+{
+    Amphibious *amphibious = dynamic_cast<Amphibious *>(ship);
+    if (!amphibious)
+    {
+        std::cerr << "Error: Ship is not a amphibious, cannot upgrade to Supership!\n";
+        return;
+    }
+
+    std::cout << "Upgrading " << amphibious->getName() << ' ' << amphibious->getTeam() << amphibious->getSymbol() << " at (" << amphibious->getX() << ", " << amphibious->getY() << ") to Supership...\n";
+
+    for (auto it = activeShips.begin(); it != activeShips.end(); ++it)
+    {
+        if (*it == ship)
+        {
+
+            // move ownership out of the list temporarily (using reference to unique_ptr because can't create another unique-ptr to same obj)
+            std::unique_ptr<Ship> &shipPtr = activeShips.getUniquePtr(it);
+            std::unique_ptr<Ship> oldShip = std::move(shipPtr);
+
+            // create a new SuperShip using the old amphibious data
+            std::unique_ptr<SuperShip> newShip = std::make_unique<SuperShip>(*amphibious);
+
+            // replace old ship in the same position (preserves order)
+            shipPtr = std::move(newShip);
+
+            std::cout << "Upgrade complete: amphibious is now a Supership!\n";
+            return;
+        }
+    }
+
+    std::cerr << "Error: amphibious not found in activeShips!\n";
+}
+
+void Simulation::displayLog()
+{
+    loggingFile << "  ";
+    for (int i = 0; i < width; i++)
+    {
+        loggingFile << " " << i;
+    }
+    loggingFile << std::endl;
+    for (int i = 0; i < height; i++)
+    {
+        loggingFile << i << ": ";
+        for (int j = 0; j < width; j++)
+        {
+            loggingFile << grid[i][j] << ' ';
+        }
+        loggingFile << std::endl;
+    }
+}

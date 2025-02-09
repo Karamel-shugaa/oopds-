@@ -2,7 +2,8 @@
 #define SHIPLIST_H
 
 #include <memory>
-#include "Ship.h"
+
+class Ship;
 
 class ShipList
 {
@@ -20,22 +21,27 @@ public:
     ShipList();
     void append(std::unique_ptr<Ship>);
     // use raw pointer to remove from list (not delete yet)
-    void remove(Ship *);
+    std::unique_ptr<Ship> remove(Ship *);
     void display();
-
+    
     class Iterator
     {
         Node *current;
-
-    public:
+        
+        public:
         Iterator(Node *node) : current(node) {}
         bool operator!=(const Iterator &other) { return current != other.current; }
         void operator++() { current = current->next.get(); }
         Ship *operator*() { return current ? current->ship.get() : nullptr; }
+        Node *getNode() { return current; }
     };
-
+    
     Iterator begin() { return Iterator(head.get()); }
     Iterator end() { return Iterator(nullptr); }
+    std::unique_ptr<Ship> &getUniquePtr(Iterator it)
+    {
+        return it.getNode()->ship;
+    }
 };
 
 #endif // SHIPLIST_H

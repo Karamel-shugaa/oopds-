@@ -3,6 +3,7 @@
 
 #include <string>
 #include <memory>
+#include <fstream>
 #include "Battlefield.h"
 #include "ShipList.h"
 #include "RespawnQueue.h"
@@ -20,35 +21,30 @@ private:
     std::unique_ptr<Ship> createShip(const std::string &);
 
 public:
+    std::ofstream loggingFile;
     Simulation(std::string);
     ~Simulation();
 
     void read_iterations(std::ifstream &);
     void read_teams_details(std::ifstream &);
     void addShip(std::unique_ptr<Ship>);
+    void addToQueue(Ship *);
     void load_ship(std::string &, char &, char &, int &);
-    void getInstance(); // If you want it
     void run();
+    void displayLog();
     void respawnShips();
     void checkVictoryCondition(int cturn);
-    RespawnQueue &getRespawnQueue() { return respawnQueue; } // New to include a getter for respawnqueue
+    void battleshipToDestroyer(Ship *ship);
+    void cruiserToDestroyer(Ship *ship);
+    void destroyerToSupership(Ship *ship);
+    void frigateToCorvette(Ship *ship);
+    void amphibiousToSupership(Ship *ship);
+    RespawnQueue &getRespawnQueue()
+    {
+        return respawnQueue;
+    } // New to include a getter for respawnqueue
     void removeShip(Ship *);
-    ShipList &getShips() { return activeShips; }
-
-    // Additional helpers
     Ship *getShipAt(int x, int y);
-    bool canMoveTo(int x, int y, bool canOccupyEnemy, bool amphibious = false);
-
-    // Called after a ship moves, to update the battlefield grid
-    void updateBattlefieldPosition(Ship *ship, int oldX, int oldY);
-
-    // Upgrades oldShip => newShipType (string like "Destroyer", "Corvette", etc.)
-    // void upgradeShip(Ship *oldShip, const std::string &newType);
-
-    // For limiting or checking re-spawns
-    bool canRespawn(Ship *s);
-
-    void checkVictoryCondition();
 };
 
 #endif // SIMULATION_H

@@ -1,12 +1,13 @@
 #include "ShipList.h"
 #include "Ship.h"
+#include <iostream>
 
 ShipList::ShipList() : head(nullptr) {}
 
 // Must use move semantics to transfer ownership of ship
 void ShipList::append(std::unique_ptr<Ship> ship)
 {
-    // make_unique same as new 
+    // make_unique same as new
     auto newNode = std::make_unique<Node>(std::move(ship));
     if (head == nullptr)
     {
@@ -22,32 +23,39 @@ void ShipList::append(std::unique_ptr<Ship> ship)
     current->next = std::move(newNode);
 }
 
-void ShipList::remove(Ship *ship)
+std::unique_ptr<Ship> ShipList::remove(Ship *ship)
 {
     if (head == nullptr)
-        return;
-
+        return nullptr;
     // If head node itself is to be deleted
     if (head->ship.get() == ship)
     {
-        head = std::move(head->next);
-        return;
+        std::unique_ptr<Ship> removedShip = std::move(head->ship); 
+        head = std::move(head->next);                              
+        return removedShip;                                        
     }
     Node *current = head.get();
     Node *prev = nullptr;
-    // Traverse the list to find the node to delete
+    // traverse the list to find the node to delete
     while (current != nullptr && current->ship.get() != ship)
     {
         prev = current;
         current = current->next.get();
     }
     if (current == nullptr)
-        return;
+    {
+        std::cout << "Ship not found in list.\n";
+        return nullptr;
+    }
+
+    std::unique_ptr<Ship> removedShip = std::move(current->ship);
     if (prev != nullptr) // ship found
     {
         prev->next = std::move(current->next);
     }
+    return removedShip;
 }
+
 
 void ShipList::display()
 {
