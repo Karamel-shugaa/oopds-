@@ -29,7 +29,7 @@ void Ship::setName(std::string newName)
 
 void Ship::die()
 {
-    if (name == "Amphibious")
+    if (name == "Amphibious" || name == "SuperShip")
     {
         simulation.setCell(cell.x, cell.y, islandOrSea);
     }
@@ -743,8 +743,9 @@ void SuperShip::move()
     {
         index = directionsIndex[rand() % 4];
     } while (neighbouring[index].symbol != '0');
-
-    simulation.setCell(cell.x, cell.y, '0');
+    // handle moving from island to sea (when upgraded from amphibious)
+    simulation.setCell(cell.x, cell.y, islandOrSea);
+    islandOrSea = neighbouring[index].symbol;
     setPosition(neighbouring[index].x, neighbouring[index].y);
     simulation.setCell(cell.x, cell.y, cell.symbol);
     std::cout << name << ' ' << team << cell.symbol << " moved to (" << cell.x << ", " << cell.y << ").\n";

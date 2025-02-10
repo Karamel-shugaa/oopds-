@@ -17,6 +17,8 @@ Simulation::Simulation(std::string filename) : Battlefield(filename), shipCount(
     std::ifstream file(filename);
     if (!file.is_open())
     {
+        if (!file.good())
+            std::cerr << "Error: Could not open file " << filename << "\n";
         std::cerr << "Error: Could not open file " << filename << "\n";
         exit(1);
     }
@@ -121,8 +123,12 @@ std::unique_ptr<Ship> Simulation::createShip(const std::string &ship_name)
 
 void Simulation::load_ship(std::string &shipName, char &symbol, char &team, int &count)
 {
-    // From game.txt: ShipName Symbol    N
-    //                setname  setsymbol for N ships for team "team"
+    shipCount += count;
+    if (shipCount > getSeaCount())
+    {
+        std::cerr << "Error: Too many ships for the battlefield.\n";
+        exit(1);
+    }
     for (int i = 0; i < count; i++)
     {
         std::unique_ptr<Ship> ship = createShip(shipName);

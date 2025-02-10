@@ -98,6 +98,20 @@ void Battlefield::display()
     }
 }
 
+int Battlefield::getSeaCount()
+{
+    int count = 0;
+    for (int i = 0; i < height; i++)
+    {
+        for (int j = 0; j < width; j++)
+        {
+            if (grid[i][j] == '0')
+                count++;
+        }
+    }
+    return count;
+}
+
 bool Battlefield::placeShip(Ship *ship, bool respawn)
 {
     // give it a random position on grid where grid[x][y] == '0'

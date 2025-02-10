@@ -17,6 +17,7 @@ public:
     ~Battlefield();
     bool placeShip(Ship *ship, bool isRespawn = false);
     void display();
+    int getSeaCount();
     int getWidth() const { return width; }
     int getHeight() const { return height; }
     bool inBounds(int x, int y) const;

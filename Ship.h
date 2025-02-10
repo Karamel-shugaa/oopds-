@@ -30,7 +30,6 @@ public:
     Ship(Simulation &simulation) : simulation(simulation), lives(3), kills(0) {};
     Ship(const Ship &other) : simulation(other.simulation)
     {
-        std::cout << "Ship copy constructor called\n";
         islandOrSea = other.islandOrSea;
         cell = other.cell;
         lives = other.lives;

@@ -1,0 +1,357 @@
+
+-------------------- TURN 1 -------------------- 
+
+   0 1 2 3 4 5 6 7 8 9
+0: 0 0 0 0 0 0 0 0 0 < 
+1: 0 0 0 < 0 0 0 1 1 0 
+2: 0 < 0 < 0 0 0 1 1 0 
+3: < # 0 0 0 0 0 0 0 0 
+4: 0 0 0 0 1 0 0 0 0 # 
+5: 0 0 0 0 1 # 0 < 0 < 
+6: < 0 0 0 1 0 0 0 # 0 
+7: 0 0 0 0 0 0 0 0 0 0 
+8: 0 0 0 < < 1 1 1 0 0 
+9: 0 0 0 0 0 0 0 1 0 0 
+-------------------- BATTLESHIP -------------------- 
+
+Battleship A# at (1, 3) started its turn.
+Battleship A# at (1, 3) is scanning its surroundings.
+Battleship A# moved to (2, 3).
+Battleship at (2, 3) fires at (5, 1) and misses.
+Battleship at (2, 3) fires at (5, 3) and misses.
+
+-------------------- BATTLESHIP -------------------- 
+
+Battleship A# at (5, 5) started its turn.
+Battleship A# at (5, 5) is scanning its surroundings.
+Battleship A# moved to (6, 5).
+Battleship at (6, 5) fires at (4, 4) and misses.
+Battleship at (6, 5) fires at (8, 3) and misses.
+
+-------------------- BATTLESHIP -------------------- 
+
+Battleship A# at (8, 6) started its turn.
+Battleship A# at (8, 6) is scanning its surroundings.
+Battleship A# moved to (8, 5).
+Battleship at (8, 5) fires at (8, 8) and misses.
+Battleship at (8, 5) fires at (6, 3) and misses.
+
+-------------------- BATTLESHIP -------------------- 
+
+Battleship A# at (9, 4) started its turn.
+Battleship A# at (9, 4) is scanning its surroundings.
+Battleship A# moved to (9, 3).
+Battleship at (9, 3) fires at (11, 4) and misses.
+Battleship at (9, 3) fires at (10, -1) and misses.
+
+-------------------- CRUISER -------------------- 
+
+Cruiser B< at (3, 1) started its turn.
+Cruiser  B< at (3, 1) is scanning its surroundings.
+Cruiser B< moved to (2, 1).
+
+-------------------- CRUISER -------------------- 
+
+Cruiser B< at (7, 5) started its turn.
+Cruiser  B< at (7, 5) is scanning its surroundings.
+Cruiser B< at (7, 5) is ramming enemy at (6, 5).
+Battleship A# died at (6, 5) and has 2 life/lives left.
+Cruiser B< moved to (6, 5).
+
+-------------------- CRUISER -------------------- 
+
+Cruiser B< at (1, 2) started its turn.
+Cruiser  B< at (1, 2) is scanning its surroundings.
+Cruiser B< moved to (0, 2).
+
+-------------------- CRUISER -------------------- 
+
+Cruiser B< at (3, 8) started its turn.
+Cruiser  B< at (3, 8) is scanning its surroundings.
+Cruiser B< moved to (3, 7).
+
+-------------------- CRUISER -------------------- 
+
+Cruiser B< at (0, 6) started its turn.
+Cruiser  B< at (0, 6) is scanning its surroundings.
+Cruiser B< moved to (0, 7).
+
+-------------------- CRUISER -------------------- 
+
+Cruiser B< at (9, 5) started its turn.
+Cruiser  B< at (9, 5) is scanning its surroundings.
+Cruiser B< at (9, 5) is ramming enemy at (8, 5).
+Battleship A# died at (8, 5) and has 2 life/lives left.
+Cruiser B< moved to (8, 5).
+
+-------------------- CRUISER -------------------- 
+
+Cruiser B< at (3, 2) started its turn.
+Cruiser  B< at (3, 2) is scanning its surroundings.
+Cruiser B< moved to (3, 1).
+
+-------------------- CRUISER -------------------- 
+
+Cruiser B< at (0, 3) started its turn.
+Cruiser  B< at (0, 3) is scanning its surroundings.
+Cruiser B< moved to (0, 4).
+
+-------------------- CRUISER -------------------- 
+
+Cruiser B< at (9, 0) started its turn.
+Cruiser  B< at (9, 0) is scanning its surroundings.
+Cruiser B< moved to (9, 1).
+
+-------------------- CRUISER -------------------- 
+
+Cruiser B< at (4, 8) started its turn.
+Cruiser  B< at (4, 8) is scanning its surroundings.
+Cruiser B< moved to (3, 8).
+
+
+-------------------- TURN 2 -------------------- 
+
+   0 1 2 3 4 5 6 7 8 9
+0: 0 0 0 0 0 0 0 0 0 0 
+1: 0 0 < < 0 0 0 1 1 < 
+2: < 0 0 0 0 0 0 1 1 0 
+3: 0 0 # 0 0 0 0 # 0 # 
+4: < 0 0 0 1 0 0 0 0 0 
+5: 0 0 0 0 1 0 < 0 < 0 
+6: 0 0 0 0 1 0 0 0 0 0 
+7: < 0 0 < 0 0 # 0 0 0 
+8: 0 0 0 < 0 1 1 1 0 0 
+9: 0 0 0 0 0 0 0 1 0 0 
+-------------------- BATTLESHIP -------------------- 
+
+Battleship A# at (2, 3) started its turn.
+Battleship A# at (2, 3) is scanning its surroundings.
+Battleship A# moved to (1, 3).
+Battleship A# at (1, 3) shot at (0, 2) and hit B <!
+Cruiser B< died at (0, 2) and has 2 life/lives left.
+Battleship at (1, 3) fires at (0, 5) and misses.
+
+-------------------- BATTLESHIP -------------------- 
+
+Battleship A# at (9, 3) started its turn.
+Battleship A# at (9, 3) is scanning its surroundings.
+Battleship A# moved to (8, 3).
+Battleship at (8, 3) fires at (8, 7) and misses.
+Battleship at (8, 3) fires at (9, 5) and misses.
+
+-------------------- CRUISER -------------------- 
+
+Cruiser B< at (2, 1) started its turn.
+Cruiser  B< at (2, 1) is scanning its surroundings.
+Cruiser B< moved to (2, 2).
+
+-------------------- CRUISER -------------------- 
+
+Cruiser B< at (6, 5) started its turn.
+Cruiser  B< at (6, 5) is scanning its surroundings.
+Cruiser B< moved to (5, 5).
+
+-------------------- CRUISER -------------------- 
+
+Cruiser B< at (3, 7) started its turn.
+Cruiser  B< at (3, 7) is scanning its surroundings.
+Cruiser B< moved to (4, 7).
+
+-------------------- CRUISER -------------------- 
+
+Cruiser B< at (0, 7) started its turn.
+Cruiser  B< at (0, 7) is scanning its surroundings.
+Cruiser B< moved to (0, 8).
+
+-------------------- CRUISER -------------------- 
+
+Cruiser B< at (8, 5) started its turn.
+Cruiser  B< at (8, 5) is scanning its surroundings.
+Cruiser B< moved to (7, 5).
+
+-------------------- CRUISER -------------------- 
+
+Cruiser B< at (3, 1) started its turn.
+Cruiser  B< at (3, 1) is scanning its surroundings.
+Cruiser B< moved to (3, 2).
+
+-------------------- CRUISER -------------------- 
+
+Cruiser B< at (0, 4) started its turn.
+Cruiser  B< at (0, 4) is scanning its surroundings.
+Cruiser B< moved to (0, 3).
+
+-------------------- CRUISER -------------------- 
+
+Cruiser B< at (9, 1) started its turn.
+Cruiser  B< at (9, 1) is scanning its surroundings.
+Cruiser B< moved to (9, 0).
+
+-------------------- CRUISER -------------------- 
+
+Cruiser B< at (3, 8) started its turn.
+Cruiser  B< at (3, 8) is scanning its surroundings.
+Cruiser B< moved to (3, 7).
+
+-------------------- BATTLESHIP -------------------- 
+
+Battleship A# at (6, 7) started its turn.
+Battleship A# at (6, 7) is scanning its surroundings.
+Battleship A# moved to (6, 6).
+Battleship at (6, 6) fires at (8, 3) and misses.
+Battleship at (6, 6) fires at (7, 10) and misses.
+
+-------------------- BATTLESHIP -------------------- 
+
+Battleship A# at (7, 3) started its turn.
+Battleship A# at (7, 3) is scanning its surroundings.
+Battleship A# moved to (7, 4).
+Battleship at (7, 4) fires at (6, 4) and misses.
+Battleship at (7, 4) fires at (10, 2) and misses.
+
+
+-------------------- TURN 3 -------------------- 
+
+   0 1 2 3 4 5 6 7 8 9
+0: 0 0 0 0 0 0 0 0 0 < 
+1: 0 0 0 0 < 0 0 1 1 0 
+2: 0 0 < < 0 0 0 1 1 0 
+3: < # 0 0 0 0 0 0 # 0 
+4: 0 0 0 0 1 0 0 # 0 0 
+5: 0 0 0 0 1 < 0 < 0 0 
+6: 0 0 0 0 1 0 # 0 0 0 
+7: 0 0 0 < < 0 0 0 0 0 
+8: < 0 0 0 0 1 1 1 0 0 
+9: 0 0 0 0 0 0 0 1 0 0 
+-------------------- BATTLESHIP -------------------- 
+
+Battleship A# at (1, 3) started its turn.
+Battleship A# at (1, 3) is scanning its surroundings.
+Battleship A# moved to (2, 3).
+Battleship at (2, 3) fires at (-1, 4) and misses.
+Battleship at (2, 3) fires at (3, 4) and misses.
+
+-------------------- BATTLESHIP -------------------- 
+
+Battleship A# at (8, 3) started its turn.
+Battleship A# at (8, 3) is scanning its surroundings.
+Battleship A# moved to (9, 3).
+Battleship at (9, 3) fires at (10, 0) and misses.
+Battleship at (9, 3) fires at (9, 1) and misses.
+
+-------------------- CRUISER -------------------- 
+
+Cruiser B< at (2, 2) started its turn.
+Cruiser  B< at (2, 2) is scanning its surroundings.
+Cruiser B< at (2, 2) is ramming enemy at (2, 3).
+Battleship A# died at (2, 3) and has 2 life/lives left.
+Cruiser B< moved to (2, 3).
+
+-------------------- CRUISER -------------------- 
+
+Cruiser B< at (5, 5) started its turn.
+Cruiser  B< at (5, 5) is scanning its surroundings.
+Cruiser B< moved to (6, 5).
+
+-------------------- CRUISER -------------------- 
+
+Cruiser B< at (4, 7) started its turn.
+Cruiser  B< at (4, 7) is scanning its surroundings.
+Cruiser B< moved to (5, 7).
+
+-------------------- CRUISER -------------------- 
+
+Cruiser B< at (0, 8) started its turn.
+Cruiser  B< at (0, 8) is scanning its surroundings.
+Cruiser B< moved to (0, 9).
+
+-------------------- CRUISER -------------------- 
+
+Cruiser B< at (7, 5) started its turn.
+Cruiser  B< at (7, 5) is scanning its surroundings.
+Cruiser B< at (7, 5) is ramming enemy at (7, 4).
+Battleship A# died at (7, 4) and has 1 life/lives left.
+Cruiser B< moved to (7, 4).
+
+-------------------- CRUISER -------------------- 
+
+Cruiser B< at (3, 2) started its turn.
+Cruiser  B< at (3, 2) is scanning its surroundings.
+Cruiser B< moved to (3, 3).
+
+-------------------- CRUISER -------------------- 
+
+Cruiser B< at (0, 3) started its turn.
+Cruiser  B< at (0, 3) is scanning its surroundings.
+Cruiser B< moved to (1, 3).
+
+-------------------- CRUISER -------------------- 
+
+Cruiser B< at (9, 0) started its turn.
+Cruiser  B< at (9, 0) is scanning its surroundings.
+Cruiser B< moved to (8, 0).
+
+-------------------- CRUISER -------------------- 
+
+Cruiser B< at (3, 7) started its turn.
+Cruiser  B< at (3, 7) is scanning its surroundings.
+Cruiser B< moved to (2, 7).
+
+-------------------- BATTLESHIP -------------------- 
+
+Battleship A# at (6, 6) started its turn.
+Battleship A# at (6, 6) is scanning its surroundings.
+Battleship A# moved to (6, 7).
+Battleship at (6, 7) fires at (7, 3) and misses.
+Battleship at (6, 7) fires at (9, 8) and misses.
+
+-------------------- CRUISER -------------------- 
+
+Cruiser B< at (4, 1) started its turn.
+Cruiser  B< at (4, 1) is scanning its surroundings.
+Cruiser B< moved to (5, 1).
+
+
+-------------------- TURN 4 -------------------- 
+
+   0 1 2 3 4 5 6 7 8 9
+0: 0 0 0 0 0 0 0 0 < 0 
+1: 0 0 0 0 0 < 0 1 1 0 
+2: 0 0 # 0 0 0 0 1 1 0 
+3: 0 < < < 0 0 0 0 0 # 
+4: 0 0 0 0 1 0 0 < 0 0 
+5: 0 0 0 0 1 0 < 0 0 0 
+6: 0 0 0 0 1 0 0 # 0 0 
+7: 0 0 < 0 0 < # 0 0 0 
+8: 0 0 0 0 0 1 1 1 0 0 
+9: < 0 0 0 0 0 0 1 0 0 
+-------------------- BATTLESHIP -------------------- 
+
+Battleship A# at (9, 3) started its turn.
+Battleship A# at (9, 3) is scanning its surroundings.
+Battleship A# moved to (9, 4).
+Battleship at (9, 4) fires at (6, 2) and misses.
+Battleship at (9, 4) fires at (13, 4) and misses.
+
+-------------------- CRUISER -------------------- 
+
+Cruiser B< at (2, 3) started its turn.
+Cruiser  B< at (2, 3) is scanning its surroundings.
+Cruiser B< at (2, 3) is ramming enemy at (2, 2).
+Battleship A# at (2, 2) has fallen!
+Cruiser B< moved to (2, 2).
+
+-------------------- CRUISER -------------------- 
+
+Cruiser B< at (6, 5) started its turn.
+Cruiser  B< at (6, 5) is scanning its surroundings.
+Cruiser B< moved to (6, 4).
+
+-------------------- CRUISER -------------------- 
+
+Cruiser B< at (5, 7) started its turn.
+Cruiser  B< at (5, 7) is scanning its surroundings.
+Cruiser B< at (5, 7) is ramming enemy at (6, 7).
+Battleship A# died at (6, 7) and has 1 life/lives left.
+Cruiser B< moved to (6, 7).
+
